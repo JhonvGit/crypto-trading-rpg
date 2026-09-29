@@ -7,6 +7,8 @@ class BaseAgent(ABC):
     klass: str
     emoji: str
     symbols: list[str]
+    strategy: str = "adaptive"
+    generation: int = 1
 
     @abstractmethod
     async def decide(self, ohlcv: dict[str, list[dict]]) -> list[dict]:

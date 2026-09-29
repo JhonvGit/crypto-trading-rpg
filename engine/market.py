@@ -26,9 +26,10 @@ SYMBOL_LIMITS: dict[str, dict] = {}
 # Todos os símbolos suportados pelo simulador
 ALL_SYMBOLS: list[str] = [
     "BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "DOGEUSDT",
-    "SHIBUSDT", "ADAUSDT", "XRPUSDT", "AVAXUSDT", "MATICUSDT",
+    "SHIBUSDT", "ADAUSDT", "XRPUSDT", "AVAXUSDT", "POLUSDT",
     "DOTUSDT", "LINKUSDT", "LTCUSDT", "UNIUSDT", "ATOMUSDT",
     "NEARUSDT", "APTUSDT", "ARBUSDT", "OPUSDT", "PEPEUSDT",
+    "BCHUSDT", "AAVEUSDT", "INJUSDT", "SUIUSDT",
 ]
 
 # Cache de preços (populado a cada 5s)
@@ -51,7 +52,11 @@ _DEFAULT_LIMITS = {
     "ADAUSDT":  {"min_qty": 1.0,      "step_size": 1.0,      "min_notional": 5.0,  "tick_size": 0.0001},
     "XRPUSDT":  {"min_qty": 1.0,      "step_size": 1.0,      "min_notional": 5.0,  "tick_size": 0.0001},
     "AVAXUSDT": {"min_qty": 0.01,     "step_size": 0.01,     "min_notional": 5.0,  "tick_size": 0.01},
-    "MATICUSDT":{"min_qty": 1.0,      "step_size": 1.0,      "min_notional": 5.0,  "tick_size": 0.0001},
+    "POLUSDT":  {"min_qty": 1.0,      "step_size": 1.0,      "min_notional": 5.0,  "tick_size": 0.0001},
+    "BCHUSDT":  {"min_qty": 0.001,    "step_size": 0.001,    "min_notional": 5.0,  "tick_size": 0.01},
+    "AAVEUSDT": {"min_qty": 0.001,    "step_size": 0.001,    "min_notional": 5.0,  "tick_size": 0.01},
+    "INJUSDT":  {"min_qty": 0.01,     "step_size": 0.01,     "min_notional": 5.0,  "tick_size": 0.001},
+    "SUIUSDT":  {"min_qty": 0.1,      "step_size": 0.1,      "min_notional": 5.0,  "tick_size": 0.0001},
     "DOTUSDT":  {"min_qty": 0.1,      "step_size": 0.1,      "min_notional": 5.0,  "tick_size": 0.001},
     "LINKUSDT": {"min_qty": 0.1,      "step_size": 0.1,      "min_notional": 5.0,  "tick_size": 0.001},
     "LTCUSDT":  {"min_qty": 0.001,    "step_size": 0.001,    "min_notional": 5.0,  "tick_size": 0.01},
@@ -159,10 +164,23 @@ async def get_all_prices(client: httpx.AsyncClient) -> dict[str, float]:
         return _price_cache
 
 
-async def get_price(symbol: str, client: httpx.AsyncClient) -> float:
-    """Preço de um símbolo via cache batch."""
-    prices = await get_all_prices(client)
-    return prices.get(symbol, 0.0)
+async def get_price(symbol: str, client: Optional[httpx.AsyncClient] = None) -> float:
+    """Preço de um símbolo via cache batch. Cria client temporário se omitido."""
+    should_close = client is None
+    if client is None:
+        client = httpx.AsyncClient(timeout=10)
+    try:
+        prices = await get_all_prices(client)
+        return prices.get(symbol, 0.0)
+    finally:
+        if should_close:
+            await client.aclose()
+
+
+async def get_ohlcv(symbol: str, interval: str = "1m", limit: int = 50,
+                    client: Optional[httpx.AsyncClient] = None) -> list[dict]:
+    """Alias estável para testes / callers antigos."""
+    return await get_klines(symbol, interval, limit, client)
 
 
 async def get_klines(symbol: str, interval: str = "1m", limit: int = 50,

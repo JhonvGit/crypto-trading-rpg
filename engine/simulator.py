@@ -1,14 +1,14 @@
 """
 Simulator com limites reais da Binance:
 - validate_order: step_size, min_qty, min_notional
-- Fees: maker 0.10% compra, taker 0.10% venda (Binance Tier 0)
+- Fees: taker 0.10% nas duas pontas (market order, Binance Tier 0)
 - Atualiza stats do agente (total_fees_paid, total_pnl_gross, total_trades, win_trades)
 - Persiste notional e fee_rate no trade para auditoria
 """
 import logging
 import math
 from db.database import get_db
-from engine.market import SYMBOL_LIMITS, FEE_MAKER, FEE_TAKER, validate_order
+from engine.market import SYMBOL_LIMITS, FEE_TAKER, validate_order
 
 log = logging.getLogger("simulator")
 
@@ -28,7 +28,7 @@ async def execute_trade(agent_id: str, symbol: str, side: str,
             (agent_id,)
         )).fetchone()
         if not row:
-            return {"ok": False, "pnl": 0, "fee": 0, "notional": 0, "reason": "agent not found or eliminated"}
+            return {"ok": False, "pnl": 0, "fee": 0, "notional": 0, "reason": "agent not found"}
 
         balance    = row["balance_usd"]
         generation = row["generation"] or 1
@@ -79,7 +79,7 @@ async def execute_trade(agent_id: str, symbol: str, side: str,
                 (agent_id, symbol)
             )).fetchone()
             if not pos or pos["qty"] <= 1e-10:
-                return {"ok": False, "pnl": 0, "fee": 0, "notional": 0, "reason": "sem posição para vender"}
+                return {"ok": False, "pnl": 0, "fee": 0, "notional": 0, "reason": "no position"}
 
             # Limitar à qty disponível e ajustar step_size
             qty = min(qty, pos["qty"])

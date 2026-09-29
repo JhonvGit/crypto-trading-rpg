@@ -1,346 +1,245 @@
 """
-Sistema evolucionário de agentes - Quando um agente perde tudo ($0),
-dois novos agentes são criados herdando conhecimento dos sobreviventes.
+Evolução por falência.
+
+Quem analisa: regras + genes. JEV (System One em :8085) é opcional e
+só roda na criação de um filho — nunca no ciclo de trade. Se o Hub
+não responder, usa crossover heurístico.
 """
-import asyncio
-import logging
+from __future__ import annotations
+
 import json
+import logging
 import random
-from datetime import datetime
+from datetime import datetime, timezone
+
 from db.database import get_db
+from engine.market import ALL_SYMBOLS
+from engine.strategy import DEFAULT_GENES, merge_genes, resolve_strategy
 
 log = logging.getLogger("evolution")
 
+INITIAL_BALANCE = 50.0
+JEV_URL = "http://127.0.0.1:8085/v1/systemone"
 
-async def check_bankruptcies_and_evolve(ALL_AGENTS, prices: dict):
-    """
-    Verifica agentes com balance <= 1.0 (falidos) e cria novos agentes
-    herdando conhecimento dos 2 melhores sobreviventes.
-    """
-    from engine.simulator import portfolio_value
-    
-    async with get_db() as db:
-        bankrupts = []
-        survivors = []
-        
-        # Avaliar todos os agentes
-        for agent in ALL_AGENTS:
-            val = await portfolio_value(agent.id, prices)
-            if val <= 1.0:
-                bankrupts.append((agent, val))
-                log.info(f"💀 BANKRUPT: {agent.name} ({agent.id}) — Portfolio: ${val:.2f}")
-            else:
-                survivors.append((agent, val))
-        
-        if not bankrupts:
-            return []
-        
-        # Ordenar sobreviventes por valor
-        survivors.sort(key=lambda x: x[1], reverse=True)
-        
-        if len(survivors) < 2:
-            log.warning("⚠️ Menos de 2 sobreviventes — não é possível evoluir")
-            return []
-        
-        # Para cada falido, criar 2 novos agentes
-        new_agents_data = []
-        
-        for bankrupt, bankrupt_val in bankrupts:
-            # Marcar como eliminado
-            await db.execute(
-                "UPDATE agents SET status='eliminated', eliminated_at=? WHERE id=?",
-                (datetime.now().isoformat(), bankrupt.id)
-            )
-            
-            # Selecionar 2 pais (top 2 sobreviventes)
-            parent1, val1 = survivors[0]
-            parent2, val2 = survivors[1] if len(survivors) > 1 else survivors[0]
-            
-            # Obter geração máxima dos pais
-            gen = max(
-                getattr(parent1, 'generation', 1),
-                getattr(parent2, 'generation', 1)
-            ) + 1
-            
-            # Extrair padrões aprendidos dos pais
-            patterns1 = await extract_learned_patterns(db, parent1.id)
-            patterns2 = await extract_learned_patterns(db, parent2.id)
-            
-            # Combinar e otimizar via JEV
-            combined_knowledge = await synthesize_with_jev(
-                parent1, patterns1, val1,
-                parent2, patterns2, val2,
-                gen
-            )
-            
-            # Criar 2 novos agentes
-            for i in range(2):
-                new_id = f"gen{gen}_{bankrupt.id}_offspring{i+1}"
-                new_name = generate_name(parent1.name, parent2.name, i)
-                
-                new_agent_data = {
-                    "id": new_id,
-                    "name": new_name,
-                    "class": f"Gen{gen} {random.choice(['Estrategista', 'Oportunista', 'Calculista', 'Adaptador'])}",
-                    "emoji": random.choice(["🤖", "🦾", "🧠", "⚙️", "🔮", "💎", "⚡", "🎯", "🚀", "🔥"]),
-                    "strategy": json.dumps({
-                        "base": f"hybrid_{parent1.id}_{parent2.id}",
-                        "patterns": combined_knowledge["patterns"][:5],  # Top 5 padrões
-                        "risk_profile": combined_knowledge["risk_profile"],
-                        "symbols": combined_knowledge["symbols"],
-                    }),
-                    "generation": gen,
-                    "parent_ids": f"{parent1.id},{parent2.id}",
-                }
-                
-                # Inserir novo agente no DB
-                await db.execute("""
-                    INSERT INTO agents(id, name, class, emoji, strategy, generation, parent_ids, balance_usd, status)
-                    VALUES(?, ?, ?, ?, ?, ?, ?, 100.0, 'active')
-                """, (
-                    new_agent_data["id"],
-                    new_agent_data["name"],
-                    new_agent_data["class"],
-                    new_agent_data["emoji"],
-                    new_agent_data["strategy"],
-                    new_agent_data["generation"],
-                    new_agent_data["parent_ids"],
-                ))
-                
-                # Log evolução
-                await db.execute("""
-                    INSERT INTO evolution_log(eliminated_id, new_agent_id, parent_ids, generation, reason, inherited_patterns)
-                    VALUES(?, ?, ?, ?, ?, ?)
-                """, (
-                    bankrupt.id,
-                    new_id,
-                    new_agent_data["parent_ids"],
-                    gen,
-                    f"Bankrupt at ${bankrupt_val:.2f}",
-                    json.dumps(combined_knowledge["patterns"][:10])
-                ))
-                
-                new_agents_data.append(new_agent_data)
-                log.info(f"✨ EVOLVED: {new_name} (Gen {gen}) from {parent1.name} + {parent2.name}")
-        
-        await db.commit()
-        return new_agents_data
+
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _parse_json(raw, default):
+    if isinstance(raw, (dict, list)):
+        return raw
+    if not raw:
+        return default
+    try:
+        return json.loads(raw)
+    except Exception:
+        return default
+
+
+def mutate_genes(genes: dict, rate: float = 0.12) -> dict:
+    out = dict(genes)
+    for k, v in list(out.items()):
+        if not isinstance(v, (int, float)):
+            continue
+        factor = 1.0 + random.uniform(-rate, rate)
+        nv = v * factor
+        if isinstance(v, int):
+            nv = max(1, int(round(nv)))
+        out[k] = nv
+    return out
+
+
+def crossover_genes(a: dict, b: dict) -> dict:
+    keys = set(a) | set(b)
+    child = {}
+    for k in keys:
+        va, vb = a.get(k), b.get(k)
+        if va is None:
+            child[k] = vb
+        elif vb is None:
+            child[k] = va
+        elif isinstance(va, (int, float)) and isinstance(vb, (int, float)):
+            child[k] = va if random.random() < 0.6 else vb
+        else:
+            child[k] = va if random.random() < 0.5 else vb
+    return mutate_genes(child)
 
 
 async def extract_learned_patterns(db, agent_id: str) -> list:
-    """Extrai padrões com sucesso do agente."""
-    rows = await (await db.execute("""
-        SELECT pattern_type, symbol, indicator, threshold_low, threshold_high, action,
-               success_count, fail_count, avg_pnl, confidence
-        FROM learned_patterns
-        WHERE agent_id=? AND confidence > 0.5
-        ORDER BY avg_pnl DESC, confidence DESC
+    rows = await (await db.execute(
+        """
+        SELECT symbol, side, signal_type, outcome_pnl, outcome_pct, confidence
+        FROM knowledge_pool
+        WHERE author_id=? AND outcome_pnl > 0
+        ORDER BY outcome_pct DESC, confidence DESC
         LIMIT 20
-    """, (agent_id,))).fetchall()
-    
+        """,
+        (agent_id,),
+    )).fetchall()
     return [dict(row) for row in rows]
 
 
-async def synthesize_with_jev(parent1, patterns1, val1, parent2, patterns2, val2, generation) -> dict:
-    """
-    Usa JEV (System One) para analisar os pais e sintetizar conhecimento otimizado.
-    """
+async def synthesize_with_jev(parent1, patterns1, val1, parent2, patterns2, val2, generation) -> dict | None:
+    """Tenta JEV. Retorna None se o Hub estiver fora / resposta inválida."""
     try:
         import httpx
-        
-        # Preparar contexto para JEV
-        context = {
-            "generation": generation,
-            "parent1": {
-                "name": parent1.name,
-                "value": val1,
-                "patterns": patterns1[:10],
-                "symbols": parent1.symbols,
-            },
-            "parent2": {
-                "name": parent2.name,
-                "value": val2,
-                "patterns": patterns2[:10],
-                "symbols": parent2.symbols,
-            }
-        }
-        
-        prompt = f"""Você é JEV, um otimizador de estratégias de trading. 
+        import re
 
-Analise os dois agentes sobreviventes abaixo e sintetize uma estratégia otimizada para a próxima geração (Gen {generation}).
-
-PARENT 1: {parent1.name} — Portfolio: ${val1:.2f}
-Símbolos: {', '.join(parent1.symbols)}
-Padrões de sucesso (top 5):
-{json.dumps(patterns1[:5], indent=2)}
-
-PARENT 2: {parent2.name} — Portfolio: ${val2:.2f}
-Símbolos: {', '.join(parent2.symbols)}
-Padrões de sucesso (top 5):
-{json.dumps(patterns2[:5], indent=2)}
-
-Retorne um JSON com:
-{{
-  "patterns": [lista dos 5 melhores padrões combinados/otimizados],
-  "symbols": [lista de 2-3 símbolos mais promissores],
-  "risk_profile": "conservative|moderate|aggressive",
-  "key_insights": "insights-chave em português"
-}}"""
-
-        # Chamar JEV (System One) do Hub Investimentos
-        async with httpx.AsyncClient(timeout=15) as client:
+        prompt = (
+            "Você é um otimizador de estratégias de trading rule-based. "
+            f"Sintetize genes para a geração {generation} a partir de dois sobreviventes.\n\n"
+            f"P1 {parent1.get('name')} value=${val1:.2f} strategy={parent1.get('strategy')} "
+            f"symbols={parent1.get('symbols')} genes={parent1.get('genes')}\n"
+            f"padrões={json.dumps(patterns1[:5], default=str)}\n\n"
+            f"P2 {parent2.get('name')} value=${val2:.2f} strategy={parent2.get('strategy')} "
+            f"symbols={parent2.get('symbols')} genes={parent2.get('genes')}\n"
+            f"padrões={json.dumps(patterns2[:5], default=str)}\n\n"
+            "Responda SOMENTE JSON: "
+            '{"strategy":"' + "|".join(DEFAULT_GENES.keys()) + '",'
+            '"symbols":["BTCUSDT"],"genes":{},"risk_profile":"moderate","key_insights":"..."}'
+        )
+        async with httpx.AsyncClient(timeout=8) as client:
             resp = await client.post(
-                "http://localhost:8085/v1/systemone",
+                JEV_URL,
                 json={"messages": [{"role": "user", "content": prompt}]},
-                headers={"Content-Type": "application/json"}
+                headers={"Content-Type": "application/json"},
             )
-            
-            if resp.status_code == 200:
-                result = resp.json()
-                content = result.get("choices", [{}])[0].get("message", {}).get("content", "{}")
-                
-                # Extrair JSON da resposta
-                import re
-                json_match = re.search(r'\{.*\}', content, re.DOTALL)
-                if json_match:
-                    synthesis = json.loads(json_match.group())
-                    log.info(f"🧠 JEV synthesis for Gen {generation}: {synthesis.get('key_insights', 'N/A')[:100]}")
-                    return synthesis
-    
+        if resp.status_code != 200:
+            log.warning(f"JEV HTTP {resp.status_code}")
+            return None
+        result = resp.json()
+        content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+        if not content and isinstance(result, dict):
+            content = json.dumps(result)
+        match = re.search(r"\{.*\}", content, re.DOTALL)
+        if not match:
+            return None
+        synthesis = json.loads(match.group())
+        if not isinstance(synthesis, dict):
+            return None
+        log.info(f"JEV synthesis Gen {generation}: {str(synthesis.get('key_insights', ''))[:120]}")
+        return synthesis
     except Exception as e:
-        log.warning(f"JEV synthesis failed: {e}, usando fallback")
-    
-    # Fallback: combinar heurística simples
-    return {
-        "patterns": (patterns1[:3] + patterns2[:2]) if patterns1 and patterns2 else [],
-        "symbols": list(set(parent1.symbols + parent2.symbols))[:3],
-        "risk_profile": "moderate",
-        "key_insights": "Fallback: combinação direta dos pais"
-    }
+        log.warning(f"JEV indisponível ({e}); usando crossover heurístico")
+        return None
 
 
 def generate_name(name1: str, name2: str, index: int) -> str:
-    """Gera nome para o novo agente combinando os pais."""
-    parts1 = name1.split()
-    parts2 = name2.split()
-    
+    parts1 = (name1 or "Neo").split()
+    parts2 = (name2 or "Prime").split()
     prefixes = ["Neo", "Alpha", "Sigma", "Nova", "Quantum", "Apex", "Prime"]
     first = random.choice(prefixes)
-    
     if len(parts1) > 1 and len(parts2) > 1:
-        last = parts1[-1][:3] + parts2[-1][:3]
+        last = (parts1[-1][:3] + parts2[-1][:3]).capitalize()
     else:
-        last = f"V{index+1}"
-    
-    return f"{first} {last.capitalize()}"
+        last = f"V{index + 1}"
+    return f"{first} {last}"
 
 
-async def learn_from_trade(agent_id: str, symbol: str, side: str, entry_price: float, 
-                           exit_price: float, pnl: float, ohlcv: list):
+async def check_bankruptcies_and_evolve(prices: dict, all_agents=None):
     """
-    Após cada trade, analisa o resultado e salva padrões bem-sucedidos.
+    Falência: portfolio mark-to-market < $1.
+    Substitui o falido por 1 filho (população estável), cruzando os 2 melhores.
+    `all_agents` é ignorado (compatibilidade com chamadas antigas).
     """
-    if not ohlcv or len(ohlcv) < 20:
-        return
-    
-    closes = [c["close"] for c in ohlcv]
-    
-    # Calcular indicadores no momento do trade
-    rsi = calculate_rsi(closes)
-    macd_signal = calculate_macd_signal(closes)
-    bb_position = calculate_bollinger_position(closes, entry_price)
-    
-    success = pnl > 0
-    
+    from engine.simulator import portfolio_value
+
     async with get_db() as db:
-        # RSI pattern
-        if 0 < rsi < 100:
-            await update_pattern(db, agent_id, "rsi", symbol, "rsi", rsi - 5, rsi + 5, side, success, pnl)
-        
-        # MACD pattern
-        await update_pattern(db, agent_id, "macd", symbol, "macd_signal", 
-                           macd_signal - 0.1, macd_signal + 0.1, side, success, pnl)
-        
-        # Bollinger pattern
-        await update_pattern(db, agent_id, "bollinger", symbol, "bb_position",
-                           bb_position - 0.1, bb_position + 0.1, side, success, pnl)
-        
+        rows = await (await db.execute("SELECT * FROM agents WHERE status='active'")).fetchall()
+        agents = [dict(r) for r in rows]
+
+        scored = []
+        for agent in agents:
+            val = await portfolio_value(agent["id"], prices)
+            scored.append((agent, val))
+
+        bankrupts = [(a, v) for a, v in scored if v <= 1.0]
+        survivors = [(a, v) for a, v in scored if v > 1.0]
+        if not bankrupts:
+            return []
+        if len(survivors) < 2:
+            log.warning("Menos de 2 sobreviventes — evolução adiada")
+            return []
+
+        survivors.sort(key=lambda x: x[1], reverse=True)
+        parent1, val1 = survivors[0]
+        parent2, val2 = survivors[1]
+
+        new_agents_data = []
+        for bankrupt, bankrupt_val in bankrupts:
+            log.info(f"BANKRUPT {bankrupt['name']} ({bankrupt['id']}) ${bankrupt_val:.2f}")
+            await db.execute(
+                "UPDATE agents SET status='eliminated', eliminated_at=? WHERE id=?",
+                (_now(), bankrupt["id"]),
+            )
+
+            p1 = dict(parent1)
+            p2 = dict(parent2)
+            p1["strategy"] = resolve_strategy(p1)
+            p2["strategy"] = resolve_strategy(p2)
+            g1 = _parse_json(p1.get("genes"), {})
+            g2 = _parse_json(p2.get("genes"), {})
+            p1["genes"] = merge_genes(p1["strategy"], g1 if isinstance(g1, dict) else {})
+            p2["genes"] = merge_genes(p2["strategy"], g2 if isinstance(g2, dict) else {})
+            s1 = _parse_json(p1.get("symbols"), ["BTCUSDT"])
+            s2 = _parse_json(p2.get("symbols"), ["BTCUSDT"])
+            p1["symbols"] = [s for s in (s1 if isinstance(s1, list) else []) if s in ALL_SYMBOLS] or ["BTCUSDT"]
+            p2["symbols"] = [s for s in (s2 if isinstance(s2, list) else []) if s in ALL_SYMBOLS] or ["BTCUSDT"]
+
+            gen = max(int(p1.get("generation") or 1), int(p2.get("generation") or 1)) + 1
+            patterns1 = await extract_learned_patterns(db, p1["id"])
+            patterns2 = await extract_learned_patterns(db, p2["id"])
+            jev = await synthesize_with_jev(p1, patterns1, val1, p2, patterns2, val2, gen)
+
+            strategy = p1["strategy"] if random.random() < 0.6 else p2["strategy"]
+            genes = crossover_genes(p1["genes"], p2["genes"])
+            symbols = list(dict.fromkeys(list(p1["symbols"]) + list(p2["symbols"])))[:3] or ["BTCUSDT"]
+            insights = "crossover heurístico dos 2 melhores sobreviventes"
+
+            if jev:
+                if jev.get("strategy") in DEFAULT_GENES:
+                    strategy = jev["strategy"]
+                if isinstance(jev.get("genes"), dict):
+                    genes = merge_genes(strategy, {**genes, **jev["genes"]})
+                if isinstance(jev.get("symbols"), list) and jev["symbols"]:
+                    filtered = [s for s in jev["symbols"] if isinstance(s, str) and s in ALL_SYMBOLS][:4]
+                    if filtered:
+                        symbols = filtered
+                insights = str(jev.get("key_insights") or insights)
+
+            new_id = f"gen{gen}_{bankrupt['id'][:12]}_c1"
+            new_name = generate_name(p1.get("name", "P1"), p2.get("name", "P2"), 0)
+            klass = p1.get("class") if strategy == p1["strategy"] else p2.get("class")
+            emoji = random.choice(["🤖", "🦾", "🧠", "⚙️", "🔮", "💎", "⚡", "🎯", "🚀", "🔥"])
+            parent_ids = json.dumps([p1["id"], p2["id"]])
+
+            await db.execute(
+                """
+                INSERT INTO agents(id, name, class, emoji, strategy, generation, parent_ids,
+                                   genes, symbols, balance_usd, initial_balance, status)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?, 'active')
+                """,
+                (
+                    new_id, new_name, klass or strategy, emoji, strategy, gen, parent_ids,
+                    json.dumps(genes), json.dumps(symbols), INITIAL_BALANCE, INITIAL_BALANCE,
+                ),
+            )
+            await db.execute(
+                """
+                INSERT INTO evolution_log(bankrupt_id, child_ids, generation, reason, balance_at_death)
+                VALUES(?,?,?,?,?)
+                """,
+                (
+                    bankrupt["id"],
+                    json.dumps([new_id]),
+                    gen,
+                    f"Bankrupt at ${bankrupt_val:.2f}. {insights}"[:400],
+                    bankrupt_val,
+                ),
+            )
+            new_agents_data.append({"id": new_id, "name": new_name, "generation": gen, "strategy": strategy})
+            log.info(f"EVOLVED {new_name} (Gen {gen}) {strategy} from {p1.get('name')} + {p2.get('name')}")
+
         await db.commit()
-
-
-async def update_pattern(db, agent_id, pattern_type, symbol, indicator, 
-                        low, high, action, success, pnl):
-    """Atualiza ou cria um padrão aprendido."""
-    row = await (await db.execute("""
-        SELECT id, success_count, fail_count, avg_pnl, confidence
-        FROM learned_patterns
-        WHERE agent_id=? AND pattern_type=? AND symbol=? AND indicator=?
-          AND ABS(threshold_low - ?) < 2 AND ABS(threshold_high - ?) < 2
-        LIMIT 1
-    """, (agent_id, pattern_type, symbol, indicator, low, high))).fetchone()
-    
-    if row:
-        # Atualizar existente
-        new_success = row["success_count"] + (1 if success else 0)
-        new_fail = row["fail_count"] + (0 if success else 1)
-        total = new_success + new_fail
-        new_avg_pnl = (row["avg_pnl"] * (total - 1) + pnl) / total
-        new_conf = new_success / total if total > 0 else 0.5
-        
-        await db.execute("""
-            UPDATE learned_patterns
-            SET success_count=?, fail_count=?, avg_pnl=?, confidence=?, updated_at=?
-            WHERE id=?
-        """, (new_success, new_fail, new_avg_pnl, new_conf, datetime.now().isoformat(), row["id"]))
-    else:
-        # Criar novo
-        await db.execute("""
-            INSERT INTO learned_patterns
-            (agent_id, pattern_type, symbol, indicator, threshold_low, threshold_high, 
-             action, success_count, fail_count, avg_pnl, confidence)
-            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (agent_id, pattern_type, symbol, indicator, low, high, action,
-              1 if success else 0, 0 if success else 1, pnl, 1.0 if success else 0.0))
-
-
-def calculate_rsi(closes: list[float], period: int = 14) -> float:
-    if len(closes) < period + 1:
-        return 50.0
-    deltas = [closes[i+1] - closes[i] for i in range(len(closes) - 1)]
-    gains = [max(d, 0) for d in deltas[-period:]]
-    losses = [abs(min(d, 0)) for d in deltas[-period:]]
-    avg_g = sum(gains) / period
-    avg_l = sum(losses) / period
-    if avg_l == 0:
-        return 100.0
-    rs = avg_g / avg_l
-    return 100 - (100 / (1 + rs))
-
-
-def calculate_macd_signal(closes: list[float]) -> float:
-    if len(closes) < 26:
-        return 0.0
-    ema12 = _ema(closes, 12)
-    ema26 = _ema(closes, 26)
-    return ema12 - ema26
-
-
-def calculate_bollinger_position(closes: list[float], price: float) -> float:
-    if len(closes) < 20:
-        return 0.5
-    import math
-    window = closes[-20:]
-    mean = sum(window) / 20
-    std = math.sqrt(sum((x - mean)**2 for x in window) / 20)
-    if std == 0:
-        return 0.5
-    # Retorna posição normalizada: 0=lower_band, 0.5=mean, 1=upper_band
-    return (price - (mean - 2*std)) / (4 * std) if std > 0 else 0.5
-
-
-def _ema(prices: list[float], period: int) -> float:
-    k = 2 / (period + 1)
-    e = prices[0]
-    for p in prices[1:]:
-        e = p * k + e * (1 - k)
-    return e
+        return new_agents_data

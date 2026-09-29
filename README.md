@@ -4,29 +4,29 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
-Simulador de trading de criptomoedas com **10 agentes autônomos evolutivos** que competem, aprendem uns com os outros e evoluem geneticamente. Interface 3D isométrica estilo Google Office com personagens humanoides animados.
+Simulador **paper** de cripto com **14 agentes rule-based** que competem, compartilham sinais lucrativos e evoluem por falência (crossover de genes). Interface isométrica estilo escritório. **Não há LLM no ciclo de trade.**
 
 ---
 
 ## 🎯 O Que É Isso?
 
-Um **experimento de inteligência coletiva** onde agentes de IA:
-- Negociam criptomoedas 24/7 com dinheiro fictício ($50 inicial cada)
-- Usam **9 estratégias diferentes** (scalping, mean reversion, trend following, grid, etc)
-- **Compartilham conhecimento** via knowledge pool (trade lucrativo vira lição para todos)
-- **Evoluem geneticamente** quando vão à falência (genes dos sobreviventes geram novos agentes)
-- Operam em **múltiplos ativos simultaneamente** (até 4 pares por agente via cross-learning)
-- Respeitam **limites reais da Binance** (LOT_SIZE, MIN_NOTIONAL, fees 0.1% por lado)
+Um laboratório de **estratégias técnicas** (não um modelo de linguagem):
+- Negociam 24/7 com **dinheiro fictício** ($50 inicial cada) sobre preços públicos da Binance
+- 14 agentes / 14 regras (scalping, RSI, MACD, Bollinger, DCA, grid, breakout, etc.)
+- Knowledge pool: só **SELL lucrativo** vira sinal compartilhado (BUY com PnL 0 não vota)
+- Falência (< $1 mark-to-market) → 1 filho herda genes dos 2 melhores (JEV/System One é **opcional** e só nessa hora)
+- Até 4 pares por agente via cross-learning
+- Limites reais Binance (LOT_SIZE, MIN_NOTIONAL) e fee taker 0.10% por lado
 
-**Objetivo:** Descobrir qual estratégia + configuração sobrevive mais tempo em condições de mercado reais (dados live da Binance).
+**Objetivo:** ver qual regra + genes sobrevive com dados reais de preço — não executar ordens na exchange.
 
 ---
 
 ## ✨ Features
 
 ### Backend (Python 3.14 + FastAPI)
-- **10 agentes iniciais (Gen1)** com personalidades distintas
-- **Sistema evolutivo:** falência → 2 novos agentes herdam genes dos sobreviventes
+- **14 agentes iniciais (Gen1)** com regras distintas (coluna `strategy` no SQLite)
+- **Sistema evolutivo:** falência → 1 filho herda genes dos 2 melhores sobreviventes
 - **Knowledge pool persistente (SQLite):** cada trade lucrativo vira padrão compartilhado
 - **Cross-learning:** agentes absorvem novos símbolos quando colegas lucram neles
 - **Indicadores técnicos inline:** RSI, MACD, Z-score, Momentum (sem dependências externas)
@@ -39,7 +39,7 @@ Um **experimento de inteligência coletiva** onde agentes de IA:
 - **Personagens humanoides animados:** blazers coloridos, expressões faciais, respiração, gestos de compra/venda
 - **Balões de decisão:** razão da trade + sparkline embutida + pills de indicadores (RSI, MACD, Z-score)
 - **Painel lateral glassmorphism:** ranking com progress bar, feed de atividade, stats globais
-- **Modal de detalhes:** 4 abas (Overview, Estratégia & ML, Histórico de trades, Posições)
+- **Modal de detalhes:** 4 abas (Overview, Estratégia & regras, Histórico, Posições)
 - **Badge de geração colorido:** Gen1=azul, Gen2=roxo, Gen3=amarelo, Gen4=verde
 
 ---
@@ -118,18 +118,22 @@ Acesse http://localhost:8090 — escritório 3D com agentes operando ao vivo.
 
 ## 🧠 Estratégias dos Agentes
 
-| Agente                | Classe           | Estratégia Principal                          | Símbolos Iniciais       |
+| Agente                | `strategy`       | Regra (sem LLM)                               | Símbolos Iniciais       |
 |-----------------------|------------------|-----------------------------------------------|-------------------------|
-| ⚡ Flash Scalper      | `scalping`       | RSI < 32 + momentum > 0                      | BTC, ETH                |
-| 🛡️ Safe Harbor        | `mean_reversion` | Z-score < -1.8 (distante da média)           | BNB, SOL                |
-| 📊 Volume Hunter      | `grid`           | Grid trading em zona inferior/superior        | DOGE, SHIB              |
-| 🌊 Trend Rider        | `trend`          | MACD cross + momentum > 0.3%                 | ADA, DOT                |
-| 🔄 Reverso            | `mean_reversion` | Reversão à média (Z-score extremos)          | XRP, LINK               |
-| 💥 Breakout King      | `breakout`       | Rompimento de resistência + RSI > 75 exit    | AVAX, MATIC             |
-| 🎯 Grid Master        | `grid`           | Compra baixa / vende alta (mid price)        | LTC, BCH                |
-| 🌪️ Volatility Surfer | `volatility`     | Alta vol (> 0.5%) + RSI < 50                 | ATOM, NEAR              |
-| 🔮 Pattern Pro        | `swing`          | Swing low/high (RSI + Z-score combinados)    | UNI, AAVE               |
-| 🧠 Adaptive AI        | `adaptive`       | Comunidade (≥3 sinais) > indicadores próprios | FTM, INJ                |
+| Flash Scalper         | `scalping`       | Momentum-5 ±0.3%                              | BTC, ETH                |
+| Safe Harbor           | `conservative`   | RSI-21 < 25 / > 80                            | BNB, SOL                |
+| Volume Hunter         | `volume`         | Spike de volume 2× média-20                   | DOGE, SHIB              |
+| Trend Rider           | `trend`          | SMA20/SMA50 golden/death cross                | ADA, DOT                |
+| Reverso               | `mean_reversion` | Z-score ±1.5σ (30)                            | XRP, LINK               |
+| Breakout King         | `breakout`       | Rompimento high/low-20                        | AVAX, POL               |
+| Grid Master           | `grid`           | Grade no range-50                             | LTC, BCH                |
+| Volatility Surfer     | `volatility`     | ATR% > 3 + RSI filtro                         | ATOM, NEAR              |
+| Pattern Pro           | `pattern`        | 3 closes consecutivos                         | UNI, AAVE               |
+| Adaptive Ensemble     | `adaptive`       | Score RSI+mom+Z + comunidade                  | SUI, INJ                |
+| MACD Cross            | `macd`           | Cruzamento MACD/sinal + momentum              | ETH, SOL                |
+| Band Walker           | `bollinger`      | Toque banda 20, 2σ                            | BNB, ADA                |
+| Dollar Cost           | `dca`            | Recarga RSI<42, realiza RSI>72                | BTC, ETH                |
+| RSI Pulse             | `rsi`            | RSI-14 < 30 / > 70                            | DOGE, PEPE              |
 
 ---
 
@@ -229,7 +233,7 @@ Acesse http://localhost:8090 — escritório 3D com agentes operando ao vivo.
 
 ## 🚧 Roadmap
 
-- [ ] **JEV System One Integration**: análise de fitness via LLM (endpoint `/v1/systemone` já preparado)
+- [x] **JEV opcional na falência**: POST `/v1/systemone` no Hub :8085; se falhar, crossover heurístico. Sem LLM no ciclo de 5s.
 - [ ] **Modo Paper Trading Real**: conectar com Binance Testnet
 - [ ] **Dashboard de Insights**: heatmap de símbolos mais rentáveis, timeline de evolução
 - [ ] **Replay de Gerações**: assistir trades frame-by-frame de gerações antigas
@@ -286,7 +290,7 @@ pytest tests/test_simulator.py -v
 pytest --cov=engine --cov-report=html
 ```
 
-**Status atual:** 8/8 testes passando (pre-fee code — testes de fee logic pendentes).
+**Status:** pytest em `tests/` cobre dispatcher (`strategy.py`), simulator/fees, evolução e API Binance.
 
 ---
 

@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS agents (
     generation        INTEGER DEFAULT 1,
     parent_ids        TEXT DEFAULT '[]',        -- JSON array de IDs pais
     genes             TEXT DEFAULT '{}',        -- JSON: parâmetros herdados
+    strategy          TEXT DEFAULT 'adaptive',  -- chave do dispatcher (scalping, trend, ...)
     symbols           TEXT DEFAULT '["BTCUSDT"]', -- JSON array: multi-asset
     balance_usd       REAL DEFAULT 50.0,
     initial_balance   REAL DEFAULT 50.0,

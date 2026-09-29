@@ -9,8 +9,8 @@ from fastapi.staticfiles import StaticFiles
 
 from db.database import get_db, init_db
 from engine import engine_loop, stop_engine, portfolio_value, ALL_SYMBOLS, AGENT_LAST_DECISION, SHARED_KNOWLEDGE
-from engine.market import ALL_SYMBOLS as _ALL_SYMBOLS, SYMBOL_LIMITS
 from engine.market import get_price
+from engine.strategy import DEFAULT_GENES, resolve_strategy
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("server")
@@ -24,7 +24,7 @@ AGENT_PROFILES = {
         "ml_tech": "Momentum Indicator (janela 5-candles): variação percentual close[-1]/close[-5]. Threshold ±0.3% para entrada.",
         "risk": "Agressivo — 15% do capital por entrada. Alta frequência de trades.",
         "indicators": ["Momentum-5", "Close Delta %"],
-        "ml_model": "Rule-based com herança genética. Genes evolutivos ajustam threshold e qty_pct ao longo das gerações.",
+        "ml_model": "Regras + genes evolutivos (thresholds). Sem LLM no ciclo de trade.",
     },
     "conservative_002": {
         "strategy_desc": "Compra apenas em oversold extremo (RSI21 < 25) e vende em overbought (RSI21 > 80). Prioriza sobrevivência sobre lucro rápido.",
@@ -87,7 +87,35 @@ AGENT_PROFILES = {
         "ml_tech": "Score: RSI<35 (+2pts), Momentum10>1% (+1pt), Z-score<-1σ (+1pt). Compra apenas com score≥3. Multi-confirmação obrigatória.",
         "risk": "Moderado-conservador — 25% com multi-confirmação, 0% sem sinal forte.",
         "indicators": ["RSI-14", "Momentum-10", "Z-Score-20", "Composite Score"],
-        "ml_model": "Ensemble voting. Mais sofisticado = melhor material genético para evolução.",
+        "ml_model": "Ensemble de regras (RSI + momentum + Z-score). Sem LLM no ciclo de trade.",
+    },
+    "macd_011": {
+        "strategy_desc": "MACD (12/26) vs sinal EMA9. Compra no cruzamento altista com momentum positivo; vende no cruzamento baixista.",
+        "ml_tech": "MACD line = EMA12−EMA26; signal = EMA9 da linha. Confirmação: momentum-10 na mesma direção.",
+        "risk": "Moderado — 22% compra, 100% venda no cruzamento inverso.",
+        "indicators": ["MACD-12/26", "Signal-9", "Momentum-10"],
+        "ml_model": "Rule-based. Sem rede neural.",
+    },
+    "bollinger_012": {
+        "strategy_desc": "Mean-reversion nas Bandas de Bollinger (20, 2σ). Compra abaixo da inferior, vende acima da superior.",
+        "ml_tech": "Banda = SMA20 ± 2σ. Entrada só no toque da banda, não no meio.",
+        "risk": "Moderado — 25% compra, 90% venda. Sofre em tendências fortes.",
+        "indicators": ["BB-20", "StdDev", "SMA-20"],
+        "ml_model": "Estatística clássica. Sem LLM.",
+    },
+    "dca_013": {
+        "strategy_desc": "Dollar-cost averaging: fatias pequenas (8%) quando RSI < 42; realiza 40% em RSI > 72.",
+        "ml_tech": "RSI-14 como gatilho de recarga periódica. Não tenta timing de fundo.",
+        "risk": "Conservador — 8% por recarga. Acumula em quedas longas.",
+        "indicators": ["RSI-14"],
+        "ml_model": "DCA determinístico. Sem LLM.",
+    },
+    "rsi_014": {
+        "strategy_desc": "RSI clássico 14: compra < 30, vende > 70. Baseline para comparar as outras regras.",
+        "ml_tech": "Wilder RSI 14 períodos sobre closes de 1m.",
+        "risk": "Moderado — 20% compra, 100% venda no overbought.",
+        "indicators": ["RSI-14"],
+        "ml_model": "RSI puro. Sem LLM.",
     },
 }
 
@@ -135,14 +163,16 @@ async def get_agents_data(full_trades: int = 5) -> list[dict]:
             stats = await (await db.execute(
                 "SELECT COUNT(*) as cnt, "
                 "COALESCE(SUM(fee_usd), 0) as total_fee, "
-                "SUM(CASE WHEN pnl > 0 THEN 1 ELSE 0 END) as wins "
+                "SUM(CASE WHEN side='SELL' AND pnl > 0 THEN 1 ELSE 0 END) as wins, "
+                "SUM(CASE WHEN side='SELL' THEN 1 ELSE 0 END) as sells "
                 "FROM trades WHERE agent_id=?",
                 (d["id"],)
             )).fetchone()
 
             total_trades = stats["cnt"] if stats else 0
-            wins = stats["wins"] if stats else 0
-            win_rate = round((wins / total_trades * 100), 1) if total_trades > 0 else 0.0
+            sells = (stats["sells"] if stats else 0) or 0
+            wins = (stats["wins"] if stats else 0) or 0
+            win_rate = round((wins / sells * 100), 1) if sells > 0 else 0.0
 
             profile = AGENT_PROFILES.get(d["id"], {})
 
@@ -184,6 +214,7 @@ async def get_agents_data(full_trades: int = 5) -> list[dict]:
                 "risk": profile.get("risk", ""),
                 "indicators": profile.get("indicators", []),
                 "ml_model": profile.get("ml_model", ""),
+                "strategy": resolve_strategy(d),
                 "last_decision": AGENT_LAST_DECISION.get(d["id"]),
             })
 
@@ -219,14 +250,32 @@ async def lifespan(app: FastAPI):
     async with get_db() as db:
         from engine.agents.initial_agents import INITIAL_AGENTS
         for agent_obj in INITIAL_AGENTS:
-            syms_json = __import__("json").dumps(agent_obj.symbols)
-            await db.execute("""
-                INSERT OR IGNORE INTO agents(id, name, class, emoji,
-                    generation, initial_balance, balance_usd, status, symbols)
-                VALUES(?,?,?,?,1,?,?,'active',?)
-            """, (agent_obj.id, agent_obj.name,
-                  getattr(agent_obj, "klass", "trader"),
-                  agent_obj.emoji, INITIAL_BALANCE, INITIAL_BALANCE, syms_json))
+            strategy = getattr(agent_obj, "strategy", None) or resolve_strategy(
+                {"class": getattr(agent_obj, "klass", "trader")}
+            )
+            genes = json.dumps(DEFAULT_GENES.get(strategy, DEFAULT_GENES["adaptive"]))
+            syms_json = json.dumps(list(agent_obj.symbols))
+            klass = getattr(agent_obj, "klass", "trader")
+            await db.execute(
+                """
+                INSERT INTO agents(id, name, class, emoji, generation, initial_balance,
+                                   balance_usd, status, symbols, strategy, genes)
+                VALUES(?,?,?,?,1,?,?,'active',?,?,?)
+                ON CONFLICT(id) DO UPDATE SET
+                  name=excluded.name,
+                  class=excluded.class,
+                  emoji=excluded.emoji,
+                  strategy=excluded.strategy,
+                  genes=CASE
+                    WHEN agents.genes IS NULL OR agents.genes IN ('', '{}')
+                    THEN excluded.genes ELSE agents.genes END
+                """,
+                (agent_obj.id, agent_obj.name, klass, agent_obj.emoji,
+                 INITIAL_BALANCE, INITIAL_BALANCE, syms_json, strategy, genes),
+            )
+        # Pares delistados na Binance (não apaga cross-learning de outros símbolos)
+        await db.execute("UPDATE agents SET symbols = REPLACE(symbols, 'MATICUSDT', 'POLUSDT')")
+        await db.execute("UPDATE agents SET symbols = REPLACE(symbols, 'FTMUSDT', 'SUIUSDT')")
         await db.commit()
     engine_loop()
     bcast_task = asyncio.create_task(broadcaster())
@@ -296,7 +345,8 @@ async def api_agent_detail(agent_id: str):
             "SELECT COUNT(*) as cnt, "
             "COALESCE(SUM(fee_usd), 0) as total_fee, "
             "COALESCE(SUM(pnl), 0) as total_pnl, "
-            "SUM(CASE WHEN pnl > 0 THEN 1 ELSE 0 END) as wins "
+            "SUM(CASE WHEN side='SELL' AND pnl > 0 THEN 1 ELSE 0 END) as wins, "
+            "SUM(CASE WHEN side='SELL' THEN 1 ELSE 0 END) as sells "
             "FROM trades WHERE agent_id=?",
             (agent_id,)
         )).fetchone()
@@ -312,8 +362,9 @@ async def api_agent_detail(agent_id: str):
         )).fetchall()
 
         total_trades = stats["cnt"] if stats else 0
-        wins = stats["wins"] if stats else 0
-        win_rate = round((wins / total_trades * 100), 1) if total_trades > 0 else 0.0
+        sells = (stats["sells"] if stats else 0) or 0
+        wins = (stats["wins"] if stats else 0) or 0
+        win_rate = round((wins / sells * 100), 1) if sells > 0 else 0.0
 
         profile = AGENT_PROFILES.get(agent_id, {})
         d = dict(row)
@@ -352,6 +403,7 @@ async def api_agent_detail(agent_id: str):
             "total_trades": total_trades,
             "win_rate": win_rate,
             "symbols": syms2,
+            "strategy": resolve_strategy(d),
             "strategy_desc": profile.get("strategy_desc", ""),
             "ml_tech": profile.get("ml_tech", ""),
             "ml_model": profile.get("ml_model", ""),

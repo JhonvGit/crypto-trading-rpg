@@ -12,6 +12,7 @@ class ScalpingAgent(BaseAgent):
     name = "Flash Scalper"
     klass = "Scalper Agressivo"
     emoji = "⚡"
+    strategy = "scalping"
     symbols = ["BTCUSDT", "ETHUSDT"]
     generation = 1
 
@@ -36,6 +37,7 @@ class ConservativeAgent(BaseAgent):
     name = "Safe Harbor"
     klass = "Conservador"
     emoji = "🛡️"
+    strategy = "conservative"
     symbols = ["BNBUSDT", "SOLUSDT"]
     generation = 1
 
@@ -57,6 +59,7 @@ class VolumeAgent(BaseAgent):
     name = "Volume Hunter"
     klass = "Caçador de Volume"
     emoji = "📊"
+    strategy = "volume"
     symbols = ["DOGEUSDT", "SHIBUSDT"]
     generation = 1
 
@@ -85,6 +88,7 @@ class TrendFollowerAgent(BaseAgent):
     name = "Trend Rider"
     klass = "Seguidor de Tendência"
     emoji = "🌊"
+    strategy = "trend"
     symbols = ["ADAUSDT", "DOTUSDT"]
     generation = 1
 
@@ -110,6 +114,7 @@ class MeanReversionAgent(BaseAgent):
     name = "Reverso"
     klass = "Reversão à Média"
     emoji = "🔄"
+    strategy = "mean_reversion"
     symbols = ["XRPUSDT", "LINKUSDT"]
     generation = 1
 
@@ -136,7 +141,8 @@ class BreakoutAgent(BaseAgent):
     name = "Breakout King"
     klass = "Rompedor"
     emoji = "💥"
-    symbols = ["AVAXUSDT", "MATICUSDT"]
+    strategy = "breakout"
+    symbols = ["AVAXUSDT", "POLUSDT"]
     generation = 1
 
     async def decide(self, ohlcv: dict) -> list[dict]:
@@ -164,6 +170,7 @@ class GridTradingAgent(BaseAgent):
     name = "Grid Master"
     klass = "Trader de Grade"
     emoji = "🎯"
+    strategy = "grid"
     symbols = ["LTCUSDT", "BCHUSDT"]
     generation = 1
 
@@ -192,6 +199,7 @@ class VolatilityAgent(BaseAgent):
     name = "Volatility Surfer"
     klass = "Surfista da Volatilidade"
     emoji = "🌪️"
+    strategy = "volatility"
     symbols = ["ATOMUSDT", "NEARUSDT"]
     generation = 1
 
@@ -226,6 +234,7 @@ class PatternAgent(BaseAgent):
     name = "Pattern Pro"
     klass = "Reconhecedor de Padrões"
     emoji = "🔮"
+    strategy = "pattern"
     symbols = ["UNIUSDT", "AAVEUSDT"]
     generation = 1
 
@@ -247,10 +256,11 @@ class PatternAgent(BaseAgent):
 
 class AdaptiveAgent(BaseAgent):
     id = "adaptive_010"
-    name = "Adaptive AI"
+    name = "Adaptive Ensemble"
     klass = "Adaptativo"
     emoji = "🧠"
-    symbols = ["FTMUSDT", "INJUSDT"]
+    strategy = "adaptive"
+    symbols = ["SUIUSDT", "INJUSDT"]
     generation = 1
 
     async def decide(self, ohlcv: dict) -> list[dict]:
@@ -286,6 +296,58 @@ class AdaptiveAgent(BaseAgent):
         return actions
 
 
+class MACDSpecialistAgent(BaseAgent):
+    id = "macd_011"
+    name = "MACD Cross"
+    klass = "Especialista MACD"
+    emoji = "📶"
+    strategy = "macd"
+    symbols = ["ETHUSDT", "SOLUSDT"]
+    generation = 1
+
+    async def decide(self, ohlcv: dict) -> list[dict]:
+        return []
+
+
+class BollingerBandAgent(BaseAgent):
+    id = "bollinger_012"
+    name = "Band Walker"
+    klass = "Bandas de Bollinger"
+    emoji = "📏"
+    strategy = "bollinger"
+    symbols = ["BNBUSDT", "ADAUSDT"]
+    generation = 1
+
+    async def decide(self, ohlcv: dict) -> list[dict]:
+        return []
+
+
+class DCAAgent(BaseAgent):
+    id = "dca_013"
+    name = "Dollar Cost"
+    klass = "DCA Disciplinado"
+    emoji = "🧱"
+    strategy = "dca"
+    symbols = ["BTCUSDT", "ETHUSDT"]
+    generation = 1
+
+    async def decide(self, ohlcv: dict) -> list[dict]:
+        return []
+
+
+class ClassicRSIAgent(BaseAgent):
+    id = "rsi_014"
+    name = "RSI Pulse"
+    klass = "RSI Clássico"
+    emoji = "💓"
+    strategy = "rsi"
+    symbols = ["DOGEUSDT", "PEPEUSDT"]
+    generation = 1
+
+    async def decide(self, ohlcv: dict) -> list[dict]:
+        return []
+
+
 # Lista de todos os agentes iniciais
 INITIAL_AGENTS = [
     ScalpingAgent(),
@@ -298,4 +360,8 @@ INITIAL_AGENTS = [
     VolatilityAgent(),
     PatternAgent(),
     AdaptiveAgent(),
+    MACDSpecialistAgent(),
+    BollingerBandAgent(),
+    DCAAgent(),
+    ClassicRSIAgent(),
 ]
