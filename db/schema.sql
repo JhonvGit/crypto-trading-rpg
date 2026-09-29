@@ -1,15 +1,17 @@
 CREATE TABLE IF NOT EXISTS agents (
-    id          TEXT PRIMARY KEY,
-    name        TEXT NOT NULL,
-    class       TEXT NOT NULL,
-    emoji       TEXT NOT NULL,
-    strategy    TEXT NOT NULL,
-    generation  INTEGER NOT NULL DEFAULT 1,
-    parent_ids  TEXT,
-    balance_usd REAL NOT NULL DEFAULT 100.0,
-    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
-    eliminated_at DATETIME,
-    status      TEXT NOT NULL DEFAULT 'active'
+    id              TEXT PRIMARY KEY,
+    name            TEXT NOT NULL,
+    class           TEXT NOT NULL,
+    emoji           TEXT NOT NULL,
+    strategy        TEXT NOT NULL,
+    generation      INTEGER NOT NULL DEFAULT 1,
+    parent_ids      TEXT,
+    initial_balance REAL NOT NULL DEFAULT 50.0,
+    balance_usd     REAL NOT NULL DEFAULT 50.0,
+    total_fees_paid REAL NOT NULL DEFAULT 0.0,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    eliminated_at   DATETIME,
+    status          TEXT NOT NULL DEFAULT 'active'
 );
 
 CREATE TABLE IF NOT EXISTS positions (
@@ -25,10 +27,11 @@ CREATE TABLE IF NOT EXISTS trades (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     agent_id    TEXT NOT NULL,
     symbol      TEXT NOT NULL,
-    side        TEXT NOT NULL,
+    side        TEXT NOT NULL,       -- BUY | SELL
     qty         REAL NOT NULL,
     price       REAL NOT NULL,
     pnl         REAL NOT NULL DEFAULT 0.0,
+    fee         REAL NOT NULL DEFAULT 0.0,   -- fee em USD pago neste trade
     ts          DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
