@@ -572,16 +572,16 @@ function drawDecisionBubble(s, z, agent, idx) {
   // Indicadores em pills coloridos
   let indPills = [];
   if (dec) {
-    const rsi = dec.rsi||0;
+    const rsi = (dec.indicators?.rsi || 0)||0;
     const rsiCol = rsi<35?"#34a853":rsi>65?"#ea4335":"#fbbc05";
     indPills.push({text:`RSI ${rsi.toFixed(0)}`, col:rsiCol});
     
-    if (dec.momentum) {
-      const mCol = dec.momentum>=0?"#34a853":"#ea4335";
-      indPills.push({text:`M${dec.momentum>=0?"+":""}${dec.momentum.toFixed(1)}%`, col:mCol});
+    if ((dec.indicators?.momentum || 0)) {
+      const mCol = (dec.indicators?.momentum || 0)>=0?"#34a853":"#ea4335";
+      indPills.push({text:`M${(dec.indicators?.momentum || 0)>=0?"+":""}${(dec.indicators?.momentum || 0).toFixed(1)}%`, col:mCol});
     }
-    if (dec.zscore) {
-      indPills.push({text:`Z${dec.zscore.toFixed(1)}σ`, col:"#4285f4"});
+    if ((dec.indicators?.zscore || 0)) {
+      indPills.push({text:`Z${(dec.indicators?.zscore || 0).toFixed(1)}σ`, col:"#4285f4"});
     }
   }
   
@@ -690,7 +690,7 @@ function honestRules(raw, fallback) {
     .replace(/\bTécnica de ML\b/gi, "Regras")
     .replace(/\bmachine learning\b/gi, "indicadores")
     .replace(/\bML\b/g, "regras")
-    .replace(/\bLLM\b/g, "regras");
+    /* removed naive replace */
 }
 const tooltip = document.getElementById("tooltip");
 function showTooltip(agent) {
@@ -1017,7 +1017,7 @@ function fillModal(a) {
   else {
     noT.style.display="none";
     trades.forEach(t=>{
-      const pnl=Number(t.pnl)||0, fee=Number(t.fee)||0;
+      const pnl=Number(t.pnl)||0, fee=Number(t.fee_usd)||0;
       const ts=t.ts?new Date(t.ts).toLocaleTimeString("pt-BR"):"—";
       const tr=document.createElement("tr");
       const cells=[
@@ -1217,7 +1217,7 @@ function onData(data) {
       if(!activityLog.has(key)){
         activityLog.add(key);
         addActivity(agent.emoji,agent.name,t.side.toLowerCase(),
-          `${t.symbol} @ $${Number(t.price).toFixed(4)}`,Number(t.fee)||0,
+          `${t.symbol} @ $${Number(t.price).toFixed(4)}`,Number(t.fee_usd)||0,
           { strategy: strategyLabel(agent), reason: (agent.last_decision && agent.last_decision.reason) || "" });
       }
     }

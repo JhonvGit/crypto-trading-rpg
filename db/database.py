@@ -46,6 +46,6 @@ async def init_db():
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         await db.execute("PRAGMA journal_mode=WAL")
-        await db.executescript(SCHEMA.read_text())
+        await db.executescript(SCHEMA.read_text(encoding='utf-8'))
         await _migrate(db)
         await db.commit()
