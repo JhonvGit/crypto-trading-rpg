@@ -822,11 +822,21 @@ function updateRanking() {
     const barCol = a.pnl_pct>=0 ? "#34a853" : "#ea4335";
     const reason = lastReason(a);
 
-    const div=el("div", "rank-row"+(i===0?" leader":""));
+    let clsLeader = "";
+    if(i===0) clsLeader=" leader";
+    if(i===1) clsLeader=" silver";
+    if(i===2) clsLeader=" bronze";
+    const div=el("div", "rank-row"+clsLeader);
+    div.appendChild(el("div","rank-pos", i+1));
     div.appendChild(el("div","rr-avatar", a.emoji||""));
     const info=el("div","rr-info");
-    info.appendChild(el("div","rr-name", a.name||""));
-    info.appendChild(el("div","rr-strat", strategyLabel(a)));
+    
+    // Nome e estratégia na mesma linha
+    const topWrap = el("div", "rr-top");
+    topWrap.appendChild(el("div","rr-name", a.name||""));
+    topWrap.appendChild(el("div","rr-strat-badge", strategyLabel(a)));
+    info.appendChild(topWrap);
+    
     info.appendChild(el("div","rr-meta", `Gen ${a.generation||1} · ${a.win_rate||0}% win · ${a.total_trades||0} trades`));
     if (reason) info.appendChild(el("div","rr-meta", reason));
     const barWrap=el("div","rr-bar-wrap");
