@@ -8,7 +8,8 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from db.database import get_db, init_db
-from engine import engine_loop, portfolio_value, ALL_SYMBOLS, ALL_AGENTS, AGENT_LAST_DECISION
+from engine import engine_loop, stop_engine, portfolio_value, ALL_SYMBOLS, AGENT_LAST_DECISION, SHARED_KNOWLEDGE
+from engine.market import ALL_SYMBOLS as _ALL_SYMBOLS, SYMBOL_LIMITS
 from engine.market import get_price
 
 logging.basicConfig(level=logging.INFO)
@@ -107,8 +108,9 @@ async def get_agents_data(full_trades: int = 5) -> list[dict]:
         result = []
         for row in agents_rows:
             d = dict(row)
-            agent_obj = next((a for a in ALL_AGENTS if a.id == d["id"]), None)
-            syms = agent_obj.symbols if agent_obj else []
+            syms_raw = d.get("symbols") or '["BTCUSDT"]'
+            try: syms = __import__("json").loads(syms_raw)
+            except Exception: syms = ["BTCUSDT"]
             val = await portfolio_value(d["id"], prices)
 
             initial = d.get("initial_balance") or INITIAL_BALANCE
@@ -132,7 +134,7 @@ async def get_agents_data(full_trades: int = 5) -> list[dict]:
 
             stats = await (await db.execute(
                 "SELECT COUNT(*) as cnt, "
-                "COALESCE(SUM(fee), 0) as total_fee, "
+                "COALESCE(SUM(fee_usd), 0) as total_fee, "
                 "SUM(CASE WHEN pnl > 0 THEN 1 ELSE 0 END) as wins "
                 "FROM trades WHERE agent_id=?",
                 (d["id"],)
@@ -215,19 +217,21 @@ async def broadcaster():
 async def lifespan(app: FastAPI):
     await init_db()
     async with get_db() as db:
-        for agent in ALL_AGENTS:
-            generation = getattr(agent, "generation", 1)
+        from engine.agents.initial_agents import INITIAL_AGENTS
+        for agent_obj in INITIAL_AGENTS:
+            syms_json = __import__("json").dumps(agent_obj.symbols)
             await db.execute("""
-                INSERT OR IGNORE INTO agents(id, name, class, emoji, strategy,
-                    generation, initial_balance, balance_usd, status)
-                VALUES(?,?,?,?,?,?,?,?,'active')
-            """, (agent.id, agent.name, agent.klass, agent.emoji, agent.id,
-                  generation, INITIAL_BALANCE, INITIAL_BALANCE))
+                INSERT OR IGNORE INTO agents(id, name, class, emoji,
+                    generation, initial_balance, balance_usd, status, symbols)
+                VALUES(?,?,?,?,1,?,?,'active',?)
+            """, (agent_obj.id, agent_obj.name,
+                  getattr(agent_obj, "klass", "trader"),
+                  agent_obj.emoji, INITIAL_BALANCE, INITIAL_BALANCE, syms_json))
         await db.commit()
-    loop_task = asyncio.create_task(engine_loop(interval_seconds=30))
+    engine_loop()
     bcast_task = asyncio.create_task(broadcaster())
     yield
-    loop_task.cancel()
+    stop_engine()
     bcast_task.cancel()
 
 
@@ -290,7 +294,7 @@ async def api_agent_detail(agent_id: str):
 
         stats = await (await db.execute(
             "SELECT COUNT(*) as cnt, "
-            "COALESCE(SUM(fee), 0) as total_fee, "
+            "COALESCE(SUM(fee_usd), 0) as total_fee, "
             "COALESCE(SUM(pnl), 0) as total_pnl, "
             "SUM(CASE WHEN pnl > 0 THEN 1 ELSE 0 END) as wins "
             "FROM trades WHERE agent_id=?",
@@ -298,12 +302,12 @@ async def api_agent_detail(agent_id: str):
         )).fetchone()
 
         evo_rows = await (await db.execute(
-            "SELECT * FROM evolution_log WHERE new_agent_id=? ORDER BY ts DESC",
+            "SELECT * FROM evolution_log WHERE bankrupt_id=? ORDER BY ts DESC",
             (agent_id,)
         )).fetchall()
 
         patterns = await (await db.execute(
-            "SELECT * FROM learned_patterns WHERE agent_id=? ORDER BY confidence DESC LIMIT 10",
+            "SELECT symbol, side, signal_type, outcome_pnl, outcome_pct, confidence FROM knowledge_pool WHERE author_id=? ORDER BY confidence DESC LIMIT 10",
             (agent_id,)
         )).fetchall()
 
@@ -312,7 +316,10 @@ async def api_agent_detail(agent_id: str):
         win_rate = round((wins / total_trades * 100), 1) if total_trades > 0 else 0.0
 
         profile = AGENT_PROFILES.get(agent_id, {})
-        agent_obj = next((a for a in ALL_AGENTS if a.id == agent_id), None)
+        d = dict(row)
+        syms_raw2 = d.get("symbols") or '["BTCUSDT"]'
+        try: syms2 = __import__("json").loads(syms_raw2)
+        except Exception: syms2 = ["BTCUSDT"]
 
         pos_list = []
         for p in positions:
@@ -344,7 +351,7 @@ async def api_agent_detail(agent_id: str):
             "total_pnl_gross": round(stats["total_pnl"] if stats else 0, 4),
             "total_trades": total_trades,
             "win_rate": win_rate,
-            "symbols": agent_obj.symbols if agent_obj else [],
+            "symbols": syms2,
             "strategy_desc": profile.get("strategy_desc", ""),
             "ml_tech": profile.get("ml_tech", ""),
             "ml_model": profile.get("ml_model", ""),
@@ -354,7 +361,7 @@ async def api_agent_detail(agent_id: str):
             "history": [{"v": h["total_usd"], "ts": h["ts"]} for h in reversed(list(history))],
             "positions": pos_list,
             "evolution": [dict(e) for e in evo_rows],
-            "learned_patterns": [dict(p) for p in patterns],
+            "knowledge": [dict(p) for p in patterns],
         }
 
 
