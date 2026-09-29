@@ -46,7 +46,7 @@ async def get_agents_data() -> list[dict]:
                 "name": row["name"],
                 "class": row["class"],
                 "emoji": row["emoji"],
-                "generation": row.get("generation", 1),
+                "generation": dict(row).get("generation", 1),
                 "balance": round(row["balance_usd"], 4),
                 "value": round(val, 4),
                 "pnl_pct": round((val / 100.0 - 1) * 100, 2),
