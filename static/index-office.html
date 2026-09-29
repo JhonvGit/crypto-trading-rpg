@@ -3,13 +3,27 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>💼 Trading Office — Escritório de Investimentos</title>
+<title>💼 Trading Office — Google Style</title>
 <style>
+:root {
+  --g-blue:   #4285F4;
+  --g-red:    #EA4335;
+  --g-yellow: #FBBC05;
+  --g-green:  #34A853;
+  --navy:     #0a0e1a;
+  --surface:  #111827;
+  --surface2: #1a2235;
+  --border:   rgba(255,255,255,0.08);
+  --text:     #e8eaf6;
+  --muted:    #7986cb;
+  --neon-g:   #00ff88;
+  --neon-r:   #ff4466;
+}
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
-  background: #0a0a1a;
-  font-family: 'Segoe UI', system-ui, monospace;
-  color: #e0e0ff;
+  background: var(--navy);
+  font-family: 'Google Sans', 'Segoe UI', system-ui, sans-serif;
+  color: var(--text);
   overflow: hidden;
   height: 100vh;
   display: flex;
@@ -18,227 +32,374 @@ body {
 
 /* ── TOPBAR ── */
 #topbar {
-  background: linear-gradient(90deg, #0a0a20, #1a1a35, #0a0a20);
-  border-bottom: 2px solid #ffd700;
+  background: rgba(17,24,39,0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
   padding: 0 1.5rem;
-  height: 52px;
+  height: 56px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-shrink: 0;
   position: relative;
   z-index: 20;
-  box-shadow: 0 2px 20px rgba(255,215,0,0.15);
+  box-shadow: 0 2px 24px rgba(0,0,0,0.4);
 }
-#topbar h1 { font-size:1.3rem; color:#ffd700; letter-spacing:3px; text-transform:uppercase; font-weight:900; }
-.topbar-center { display:flex; gap:1.5rem; align-items:center; }
+#topbar h1 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #fff;
+}
+#topbar h1 .logo-g { color: var(--g-blue); }
+#topbar h1 .logo-o1{ color: var(--g-red); }
+#topbar h1 .logo-o2{ color: var(--g-yellow); }
+#topbar h1 .logo-g2{ color: var(--g-green); }
+#topbar h1 .logo-l { color: var(--g-blue); }
+#topbar h1 .logo-e { color: var(--g-red); }
+
+.topbar-center { display: flex; gap: 10px; align-items: center; }
 .stat-pill {
-  background:rgba(255,255,255,0.05);
-  border:1px solid #252545;
-  border-radius:20px;
-  padding:4px 12px;
-  font-size:0.78rem;
-  color:#aaa;
+  background: rgba(66,133,244,0.08);
+  border: 1px solid rgba(66,133,244,0.2);
+  border-radius: 20px;
+  padding: 4px 14px;
+  font-size: 0.75rem;
+  color: #9aa7cc;
 }
-.stat-pill strong { color:#ffd700; }
-#status { font-size:0.78rem; color:#00ff88; font-weight:bold; }
-#clock { font-family:'Courier New',monospace; font-size:1.1rem; color:#00ff88;
-  background:rgba(0,255,136,0.08); border:1px solid rgba(0,255,136,0.3);
-  border-radius:6px; padding:2px 10px; }
+.stat-pill strong { color: var(--g-blue); }
+#status {
+  font-size: 0.75rem;
+  padding: 4px 12px;
+  border-radius: 20px;
+  background: rgba(52,168,83,0.1);
+  border: 1px solid rgba(52,168,83,0.3);
+  color: var(--g-green);
+  font-weight: 600;
+}
+#clock {
+  font-family: 'SF Mono', 'Courier New', monospace;
+  font-size: 0.9rem;
+  color: var(--g-blue);
+  background: rgba(66,133,244,0.08);
+  border: 1px solid rgba(66,133,244,0.2);
+  border-radius: 8px;
+  padding: 4px 12px;
+}
 
 /* ── MAIN ── */
-#main { display:flex; flex:1; overflow:hidden; }
+#main { display: flex; flex: 1; overflow: hidden; }
 
 /* ── CANVAS ── */
-#office-wrap { flex:1; position:relative; overflow:hidden; background:radial-gradient(ellipse at 50% 30%,#1a1a33 0%,#080818 100%); }
-#office-canvas { position:absolute; top:0; left:0; cursor:grab; image-rendering:pixelated; }
-#office-canvas:active { cursor:grabbing; }
+#office-wrap {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 40% 20%, #1a237e 0%, #0a0e1a 70%);
+}
+#office-canvas { position: absolute; top: 0; left: 0; cursor: grab; }
+#office-canvas:active { cursor: grabbing; }
 
 /* Tooltip */
 #tooltip {
-  position:absolute; background:rgba(10,10,30,0.96);
-  border:2px solid #ffd700; border-radius:10px; padding:10px 14px;
-  min-width:220px; pointer-events:none; opacity:0; transition:opacity 0.15s;
-  z-index:100; box-shadow:0 4px 24px rgba(0,0,0,0.8);
+  position: absolute;
+  background: rgba(17,24,39,0.97);
+  border: 1px solid var(--g-blue);
+  border-radius: 12px;
+  padding: 12px 16px;
+  min-width: 240px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 100;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(66,133,244,0.1);
+  backdrop-filter: blur(8px);
 }
-#tooltip.show { opacity:1; }
-.tt-name { font-weight:bold; font-size:1rem; color:#ffd700; margin-bottom:6px; }
-.tt-row  { font-size:0.82rem; color:#ccc; margin:3px 0; }
-.tt-pnl  { font-size:1.1rem; font-weight:bold; margin-top:6px; }
-.tt-pnl.up { color:#00ff88; } .tt-pnl.dn { color:#ff4466; }
+#tooltip.show { opacity: 1; }
+.tt-name { font-weight: 700; font-size: 1rem; color: #fff; margin-bottom: 8px; }
+.tt-row  { font-size: 0.8rem; color: #9aa7cc; margin: 3px 0; }
+.tt-pnl  { font-size: 1rem; font-weight: 700; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+.tt-pnl.up { color: var(--neon-g); } .tt-pnl.dn { color: var(--neon-r); }
 
 /* Camera controls */
-#cam-controls { position:absolute; right:14px; top:12px; display:flex; flex-direction:column; gap:6px; z-index:50; }
+#cam-controls { position: absolute; right: 14px; top: 12px; display: flex; flex-direction: column; gap: 6px; z-index: 50; }
 .cam-btn {
-  width:36px; height:36px; background:rgba(20,20,43,0.9);
-  border:1px solid #333; border-radius:7px; color:#ffd700; font-size:1.1rem;
-  cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.15s;
+  width: 36px; height: 36px;
+  background: rgba(17,24,39,0.9);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--g-blue);
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+  backdrop-filter: blur(8px);
 }
-.cam-btn:hover { background:#ffd700; color:#000; }
+.cam-btn:hover { background: var(--g-blue); color: #fff; }
 
 /* ── RIGHT PANEL ── */
-#right-panel { width:330px; flex-shrink:0; background:#0d0d1e; border-left:2px solid #1a1a33; display:flex; flex-direction:column; overflow:hidden; }
-.panel-block { padding:0.9rem 1rem; border-bottom:1px solid #1a1a30; }
-.panel-block h3 { font-size:0.75rem; text-transform:uppercase; letter-spacing:2px; color:#ffd700; margin-bottom:0.7rem; padding-bottom:0.5rem; border-bottom:1px solid #252545; }
+#right-panel {
+  width: 340px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.panel-block {
+  padding: 1rem 1.1rem;
+  border-bottom: 1px solid var(--border);
+}
+.panel-block h3 {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--muted);
+  margin-bottom: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Global stats row */
+#global-stats {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  gap: 8px;
+  margin-top: 4px;
+}
+.gs-card {
+  background: rgba(66,133,244,0.06);
+  border: 1px solid rgba(66,133,244,0.12);
+  border-radius: 10px;
+  padding: 8px 6px;
+  text-align: center;
+}
+.gs-v { font-size: 1rem; font-weight: 700; color: var(--g-blue); }
+.gs-l { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
 
 /* Ranking */
-#ranking-list { display:flex; flex-direction:column; gap:5px; max-height:280px; overflow-y:auto; }
+#ranking-list { display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow-y: auto; }
+#ranking-list::-webkit-scrollbar { width: 4px; }
+#ranking-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
 .rank-row {
-  display:flex; align-items:center; gap:8px; padding:6px 8px;
-  border-radius:7px; background:rgba(255,255,255,0.025); border:1px solid #1e1e35;
-  cursor:pointer; transition:all 0.15s;
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+  overflow: hidden;
 }
-.rank-row:hover { background:rgba(255,255,255,0.07); border-color:#ffd700; }
-.rank-row.leader { background:rgba(255,215,0,0.08); border-color:rgba(255,215,0,0.4); }
-.rr-pos { font-size:0.85rem; font-weight:bold; color:#666; min-width:20px; }
-.rr-emoji { font-size:1.5rem; line-height:1; }
-.rr-info { flex:1; min-width:0; }
-.rr-name { font-size:0.8rem; font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.rr-meta { font-size:0.68rem; color:#888; }
-.rr-val  { font-size:0.82rem; color:#ccc; }
-.rr-pnl  { font-size:0.82rem; font-weight:bold; }
-.rr-pnl.up { color:#00ff88; } .rr-pnl.dn { color:#ff4466; } .rr-pnl.nt { color:#666; }
+.rank-row::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  border-radius: 3px 0 0 3px;
+}
+.rank-row.leader::before { background: var(--g-yellow); }
+.rank-row:nth-child(2)::before { background: var(--muted); }
+.rank-row:nth-child(3)::before { background: #a0522d; }
+.rank-row:nth-child(n+4)::before { background: var(--border); }
+.rank-row:hover { background: rgba(66,133,244,0.06); border-color: rgba(66,133,244,0.3); transform: translateX(2px); }
+.rank-row.leader { background: rgba(251,188,5,0.05); border-color: rgba(251,188,5,0.2); }
+
+.rr-avatar { font-size: 1.6rem; line-height: 1; flex-shrink: 0; }
+.rr-info { flex: 1; min-width: 0; }
+.rr-name { font-size: 0.82rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; }
+.rr-meta { font-size: 0.65rem; color: var(--muted); margin-top: 2px; }
+.rr-bar-wrap { height: 3px; background: rgba(255,255,255,0.06); border-radius: 3px; margin-top: 4px; }
+.rr-bar { height: 3px; border-radius: 3px; transition: width 0.5s; }
+.rr-right { text-align: right; flex-shrink: 0; }
+.rr-val  { font-size: 0.75rem; color: #cdd; font-weight: 600; }
+.rr-pnl  { font-size: 0.78rem; font-weight: 700; margin-top: 2px; }
+.rr-pnl.up { color: var(--neon-g); }
+.rr-pnl.dn { color: var(--neon-r); }
+.rr-pnl.nt { color: var(--muted); }
 
 /* Activity feed */
-#activity-wrap { flex:1; overflow:hidden; display:flex; flex-direction:column; }
-#activity-feed { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:5px; padding:0.9rem 1rem; }
-#activity-feed::-webkit-scrollbar { width:4px; }
-#activity-feed::-webkit-scrollbar-thumb { background:#2a2a4a; border-radius:2px; }
-.act-item { font-size:0.78rem; padding:6px 8px; border-radius:6px; border-left:3px solid #444; background:rgba(255,255,255,0.02); line-height:1.4; animation:fadeSlide 0.3s ease; }
-.act-item.buy  { border-left-color:#00ff88; }
-.act-item.sell { border-left-color:#ff4466; }
-.act-item.ev   { border-left-color:#e056fd; background:rgba(224,86,253,0.06); }
-.act-agent { font-weight:bold; color:#ffd700; }
-.act-buy   { color:#00ff88; font-weight:bold; }
-.act-sell  { color:#ff4466; font-weight:bold; }
-.act-evo   { color:#e056fd; font-weight:bold; }
-.act-fee   { color:#888; font-size:0.7rem; }
-.act-time  { color:#555; font-size:0.68rem; display:block; margin-top:2px; }
+#activity-wrap { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+#activity-feed { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; padding: 0.8rem 1rem; }
+#activity-feed::-webkit-scrollbar { width: 4px; }
+#activity-feed::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.act-item {
+  font-size: 0.77rem;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border);
+  line-height: 1.5;
+  animation: fadeSlide 0.3s ease;
+}
+.act-item.buy  { border-left: 3px solid var(--g-green); }
+.act-item.sell { border-left: 3px solid var(--neon-r); }
+.act-item.ev   { border-left: 3px solid #a855f7; background: rgba(168,85,247,0.05); }
+
+.act-header { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+.act-agent { font-weight: 700; color: #fff; }
+.act-pill {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 1px 8px; border-radius: 20px; font-size: 0.65rem; font-weight: 700;
+}
+.act-pill.buy  { background: rgba(52,168,83,0.15); color: var(--g-green); border: 1px solid rgba(52,168,83,0.3); }
+.act-pill.sell { background: rgba(234,67,53,0.15); color: var(--neon-r); border: 1px solid rgba(234,67,53,0.3); }
+.act-pill.ev   { background: rgba(168,85,247,0.15); color: #c084fc; border: 1px solid rgba(168,85,247,0.3); }
+.act-detail { font-size: 0.72rem; color: var(--muted); }
+.act-fee   { color: #555; font-size: 0.68rem; }
+.act-time  { color: #444; font-size: 0.65rem; display: block; margin-top: 2px; }
 
 /* Mini chart */
-#mini-chart { width:100%; height:110px; display:block; border-radius:6px; background:rgba(0,0,0,0.3); }
+#mini-chart { width: 100%; height: 100px; display: block; border-radius: 8px; background: rgba(0,0,0,0.3); }
 
 /* ═══════════════════════════════════════════
-   MODAL DE DETALHES DO ROBÔ
+   MODAL DE DETALHES
    ═══════════════════════════════════════════ */
 #agent-modal {
-  display:none; position:fixed; inset:0; z-index:1000;
-  background:rgba(0,0,5,0.85); backdrop-filter:blur(4px);
-  align-items:center; justify-content:center;
+  display: none; position: fixed; inset: 0; z-index: 1000;
+  background: rgba(0,0,12,0.8); backdrop-filter: blur(8px);
+  align-items: center; justify-content: center;
 }
-#agent-modal.open { display:flex; }
+#agent-modal.open { display: flex; }
 #modal-box {
-  background:#0e0e22;
-  border:2px solid #ffd700;
-  border-radius:16px;
-  width:min(860px, 96vw);
-  max-height:90vh;
-  display:flex;
-  flex-direction:column;
-  box-shadow:0 0 60px rgba(255,215,0,0.2);
-  overflow:hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  width: min(900px, 96vw);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 40px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(66,133,244,0.1);
+  overflow: hidden;
 }
 #modal-header {
-  display:flex; align-items:center; gap:14px;
-  padding:1.2rem 1.5rem; border-bottom:1px solid #252545; flex-shrink:0;
-  background:linear-gradient(90deg,rgba(255,215,0,0.05),transparent);
+  display: flex; align-items: flex-start; gap: 16px;
+  padding: 1.4rem 1.6rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: linear-gradient(135deg, rgba(66,133,244,0.05) 0%, transparent 60%);
 }
-#modal-emoji { font-size:3rem; line-height:1; }
-#modal-title { flex:1; }
-#modal-title h2 { font-size:1.4rem; color:#ffd700; }
-#modal-title .sub { font-size:0.85rem; color:#888; margin-top:2px; }
-#modal-stats {
-  display:flex; gap:1rem; margin-top:10px; flex-wrap:wrap;
+#modal-avatar { font-size: 3.5rem; line-height: 1; flex-shrink: 0; }
+#modal-title { flex: 1; }
+#modal-title h2 { font-size: 1.4rem; font-weight: 700; color: #fff; }
+#modal-title .sub { font-size: 0.82rem; color: var(--muted); margin-top: 4px; }
+.gen-badge {
+  display: inline-block;
+  padding: 2px 10px; border-radius: 20px;
+  font-size: 0.7rem; font-weight: 700; margin-left: 8px; vertical-align: middle;
 }
+.gen-badge.g1 { background: rgba(66,133,244,0.15); color: var(--g-blue); border: 1px solid rgba(66,133,244,0.3); }
+.gen-badge.g2 { background: rgba(168,85,247,0.15); color: #c084fc; border: 1px solid rgba(168,85,247,0.3); }
+.gen-badge.g3 { background: rgba(251,188,5,0.15); color: var(--g-yellow); border: 1px solid rgba(251,188,5,0.3); }
+.gen-badge.g4 { background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
+
+#modal-stats { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
 .mstat {
-  background:rgba(255,255,255,0.04); border:1px solid #252545;
-  border-radius:8px; padding:6px 14px; text-align:center; min-width:90px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  border-radius: 10px; padding: 8px 16px; text-align: center; min-width: 90px;
 }
-.mstat .v { font-size:1.1rem; font-weight:bold; }
-.mstat .l { font-size:0.65rem; color:#666; text-transform:uppercase; letter-spacing:1px; }
-.mstat.up .v { color:#00ff88; }
-.mstat.dn .v { color:#ff4466; }
-.mstat.fee .v { color:#e056fd; }
+.mstat .v { font-size: 1.1rem; font-weight: 700; color: #fff; }
+.mstat .l { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
+.mstat.up .v { color: var(--neon-g); }
+.mstat.dn .v { color: var(--neon-r); }
+.mstat.fee .v { color: #a855f7; }
+
 #modal-close {
-  width:36px; height:36px; background:rgba(255,255,255,0.06);
-  border:1px solid #333; border-radius:8px; color:#aaa; font-size:1.3rem;
-  cursor:pointer; display:flex; align-items:center; justify-content:center;
-  transition:all 0.15s; flex-shrink:0;
+  width: 36px; height: 36px;
+  background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--muted); font-size: 1.2rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; transition: all 0.15s; flex-shrink: 0;
 }
-#modal-close:hover { background:#ff4466; color:#fff; }
+#modal-close:hover { background: var(--neon-r); color: #fff; border-color: var(--neon-r); }
 
 /* Tabs */
-#modal-tabs { display:flex; gap:0; border-bottom:1px solid #1a1a35; flex-shrink:0; }
+#modal-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); flex-shrink: 0; padding: 0 0.5rem; }
 .tab-btn {
-  padding:10px 20px; font-size:0.82rem; color:#666; cursor:pointer;
-  border-bottom:3px solid transparent; transition:all 0.15s; background:none;
-  border-top:none; border-left:none; border-right:none;
-  font-family:inherit; letter-spacing:0.5px;
+  padding: 12px 20px; font-size: 0.82rem; color: var(--muted); cursor: pointer;
+  border-bottom: 2px solid transparent; transition: all 0.15s; background: none;
+  border-top: none; border-left: none; border-right: none;
+  font-family: inherit; letter-spacing: 0.3px;
+  display: flex; align-items: center; gap: 6px;
 }
-.tab-btn.active { color:#ffd700; border-bottom-color:#ffd700; background:rgba(255,215,0,0.04); }
-.tab-btn:hover { color:#fff; }
+.tab-btn.active { color: var(--g-blue); border-bottom-color: var(--g-blue); }
+.tab-btn:hover { color: #fff; }
 
 /* Tab content */
-#modal-content { flex:1; overflow:hidden; position:relative; }
-.tab-pane { display:none; height:100%; overflow-y:auto; padding:1.2rem 1.5rem; }
-.tab-pane.active { display:block; }
-.tab-pane::-webkit-scrollbar { width:5px; }
-.tab-pane::-webkit-scrollbar-thumb { background:#252545; border-radius:3px; }
+#modal-content { flex: 1; overflow: hidden; position: relative; }
+.tab-pane { display: none; height: 100%; overflow-y: auto; padding: 1.4rem 1.6rem; }
+.tab-pane.active { display: block; }
+.tab-pane::-webkit-scrollbar { width: 5px; }
+.tab-pane::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
 /* Tab: Estratégia */
-.ml-section { margin-bottom:1.4rem; }
-.ml-section h4 { font-size:0.75rem; text-transform:uppercase; letter-spacing:2px; color:#ffd700; margin-bottom:0.6rem; display:flex; align-items:center; gap:6px; }
-.ml-section p  { font-size:0.85rem; color:#ccc; line-height:1.7; }
-.indicator-tags { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+.ml-section { margin-bottom: 1.4rem; }
+.ml-section h4 {
+  font-size: 0.7rem; text-transform: uppercase; letter-spacing: 2px;
+  color: var(--muted); margin-bottom: 0.6rem;
+  display: flex; align-items: center; gap: 6px;
+}
+.ml-section p { font-size: 0.85rem; color: #cdd; line-height: 1.7; }
+.indicator-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .indicator-tag {
-  background:rgba(0,200,255,0.1); border:1px solid rgba(0,200,255,0.3);
-  border-radius:20px; padding:3px 12px; font-size:0.75rem; color:#00ccff;
+  background: rgba(66,133,244,0.08); border: 1px solid rgba(66,133,244,0.2);
+  border-radius: 20px; padding: 3px 12px; font-size: 0.73rem; color: var(--g-blue);
 }
 .risk-badge {
-  display:inline-block; padding:4px 14px; border-radius:20px; font-size:0.78rem; font-weight:bold; margin-top:6px;
+  display: inline-block; padding: 4px 14px; border-radius: 20px; font-size: 0.78rem; font-weight: 700; margin-top: 6px;
 }
-.risk-badge.high   { background:rgba(255,68,102,0.15); border:1px solid #ff4466; color:#ff4466; }
-.risk-badge.medium { background:rgba(255,165,0,0.15); border:1px solid orange; color:orange; }
-.risk-badge.low    { background:rgba(0,255,136,0.1); border:1px solid #00ff88; color:#00ff88; }
+.risk-badge.high   { background: rgba(234,67,53,0.12); border: 1px solid var(--neon-r); color: var(--neon-r); }
+.risk-badge.medium { background: rgba(251,188,5,0.12); border: 1px solid var(--g-yellow); color: var(--g-yellow); }
+.risk-badge.low    { background: rgba(52,168,83,0.1); border: 1px solid var(--g-green); color: var(--g-green); }
 
 /* Tab: Posições */
-.pos-table { width:100%; border-collapse:collapse; font-size:0.82rem; }
-.pos-table th { font-size:0.68rem; text-transform:uppercase; letter-spacing:1px; color:#555; padding:6px 8px; text-align:left; border-bottom:1px solid #1a1a35; }
-.pos-table td { padding:8px 8px; border-bottom:1px solid #0f0f25; }
-.pos-table tr:last-child td { border-bottom:none; }
-.no-pos { text-align:center; color:#444; padding:2rem; font-size:0.85rem; }
+.pos-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.pos-table th { font-size: 0.67rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); padding: 6px 8px; text-align: left; border-bottom: 1px solid var(--border); }
+.pos-table td { padding: 9px 8px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+.pos-table tr:hover td { background: rgba(255,255,255,0.02); }
+.no-pos { text-align: center; color: var(--muted); padding: 2rem; font-size: 0.85rem; }
 
-/* Tab: Histórico de Trades */
-.trade-table { width:100%; border-collapse:collapse; font-size:0.8rem; }
-.trade-table th { font-size:0.68rem; text-transform:uppercase; letter-spacing:1px; color:#555; padding:6px 8px; text-align:left; border-bottom:1px solid #1a1a35; position:sticky; top:0; background:#0e0e22; }
-.trade-table td { padding:7px 8px; border-bottom:1px solid #0a0a20; }
-.trade-table tr:hover td { background:rgba(255,255,255,0.02); }
-.side-buy  { color:#00ff88; font-weight:bold; }
-.side-sell { color:#ff4466; font-weight:bold; }
-.pnl-pos   { color:#00ff88; }
-.pnl-neg   { color:#ff4466; }
-.fee-val   { color:#888; font-size:0.72rem; }
+/* Tab: Trades */
+.trade-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.trade-table th { font-size: 0.67rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); padding: 6px 8px; text-align: left; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--surface); }
+.trade-table td { padding: 8px 8px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+.trade-table tr:hover td { background: rgba(66,133,244,0.04); }
+.side-buy  { color: var(--g-green); font-weight: 700; }
+.side-sell { color: var(--neon-r); font-weight: 700; }
+.pnl-pos   { color: var(--neon-g); }
+.pnl-neg   { color: var(--neon-r); }
+.fee-val   { color: #555; font-size: 0.72rem; }
 
 /* Chart canvas in modal */
-#modal-chart { width:100%; height:180px; display:block; margin-bottom:1rem; border-radius:8px; background:rgba(0,0,0,0.4); }
+#modal-chart { width: 100%; height: 200px; display: block; margin-bottom: 1.2rem; border-radius: 10px; background: rgba(0,0,0,0.4); }
 
 @keyframes fadeSlide {
-  from { opacity:0; transform:translateX(-8px); }
-  to   { opacity:1; transform:none; }
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: none; }
 }
-@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
 </style>
 </head>
 <body>
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>💼 Trading Office</h1>
+  <h1>
+    💼&nbsp;<span class="logo-g">T</span><span class="logo-o1">r</span><span class="logo-o2">a</span><span class="logo-g2">d</span><span class="logo-l">i</span><span class="logo-e">ng</span>&nbsp;Office
+  </h1>
   <div class="topbar-center">
     <div class="stat-pill">Ativos: <strong id="count-active">—</strong></div>
     <div class="stat-pill">Gerações: <strong id="count-gen">—</strong></div>
     <div class="stat-pill">Eliminados: <strong id="count-elim">0</strong></div>
-    <div class="stat-pill">Aporte inicial: <strong>$50</strong></div>
+    <div class="stat-pill">Aporte: <strong>$50</strong></div>
     <div id="status">🔄 Conectando...</div>
   </div>
   <div id="clock">00:00:00</div>
@@ -268,14 +429,22 @@ body {
   <!-- RIGHT PANEL -->
   <div id="right-panel">
     <div class="panel-block">
+      <h3>📊 Stats Globais</h3>
+      <div id="global-stats">
+        <div class="gs-card"><div class="gs-v" id="gs-trades">—</div><div class="gs-l">Trades</div></div>
+        <div class="gs-card"><div class="gs-v" id="gs-fees">—</div><div class="gs-l">Fees</div></div>
+        <div class="gs-card"><div class="gs-v" id="gs-pool">—</div><div class="gs-l">KB Pool</div></div>
+      </div>
+    </div>
+    <div class="panel-block">
       <h3>🏆 Ranking — % Aporte</h3>
       <div id="ranking-list"></div>
     </div>
-    <div class="panel-block" style="padding-bottom:0.6rem">
+    <div class="panel-block" style="padding-bottom:0.7rem">
       <h3>📈 Performance Top-3</h3>
       <canvas id="mini-chart"></canvas>
     </div>
-    <div class="panel-block" id="activity-header">
+    <div class="panel-block" id="activity-header" style="padding-bottom:0.4rem">
       <h3>📡 Atividade ao Vivo</h3>
     </div>
     <div id="activity-wrap">
@@ -285,11 +454,11 @@ body {
 
 </div>
 
-<!-- ═══ MODAL DE DETALHES DO ROBÔ ═══ -->
+<!-- ═══ MODAL DE DETALHES ═══ -->
 <div id="agent-modal">
   <div id="modal-box">
     <div id="modal-header">
-      <div id="modal-emoji">🤖</div>
+      <div id="modal-avatar">🧑💻</div>
       <div id="modal-title">
         <h2 id="modal-name">-</h2>
         <div class="sub" id="modal-class">-</div>
@@ -297,7 +466,7 @@ body {
           <div class="mstat" id="ms-value"><div class="v" id="ms-v">-</div><div class="l">Patrimônio</div></div>
           <div class="mstat" id="ms-pnl"><div class="v" id="ms-p">-</div><div class="l">% Aporte</div></div>
           <div class="mstat" id="ms-wr"><div class="v" id="ms-w">-</div><div class="l">Win Rate</div></div>
-          <div class="mstat fee"><div class="v" id="ms-f">-</div><div class="l">Fees Pagos</div></div>
+          <div class="mstat fee"><div class="v" id="ms-f">-</div><div class="l">Fees</div></div>
           <div class="mstat" id="ms-trades"><div class="v" id="ms-t">-</div><div class="l">Trades</div></div>
           <div class="mstat" id="ms-gen"><div class="v" id="ms-g">-</div><div class="l">Geração</div></div>
         </div>
@@ -307,7 +476,7 @@ body {
 
     <div id="modal-tabs">
       <button class="tab-btn active" data-tab="overview">📊 Overview</button>
-      <button class="tab-btn" data-tab="strategy">🧠 Estratégia & ML</button>
+      <button class="tab-btn" data-tab="strategy">🧠 Estratégia</button>
       <button class="tab-btn" data-tab="trades">📋 Histórico</button>
       <button class="tab-btn" data-tab="positions">💼 Posições</button>
     </div>
@@ -319,7 +488,7 @@ body {
         <div id="overview-positions"></div>
       </div>
 
-      <!-- Estratégia e ML -->
+      <!-- Estratégia -->
       <div class="tab-pane" id="pane-strategy">
         <div class="ml-section">
           <h4>📖 Estratégia</h4>
@@ -334,7 +503,7 @@ body {
           <p id="s-model">-</p>
         </div>
         <div class="ml-section">
-          <h4>📡 Indicadores Usados</h4>
+          <h4>📡 Indicadores</h4>
           <div class="indicator-tags" id="s-indicators"></div>
         </div>
         <div class="ml-section">
@@ -348,13 +517,7 @@ body {
         <table class="trade-table">
           <thead>
             <tr>
-              <th>Hora</th>
-              <th>Par</th>
-              <th>Lado</th>
-              <th>Qtd</th>
-              <th>Preço</th>
-              <th>P&L</th>
-              <th>Fee</th>
+              <th>Hora</th><th>Par</th><th>Lado</th><th>Qtd</th><th>Preço</th><th>P&L</th><th>Fee</th>
             </tr>
           </thead>
           <tbody id="trades-tbody"></tbody>
@@ -367,12 +530,7 @@ body {
         <table class="pos-table">
           <thead>
             <tr>
-              <th>Par</th>
-              <th>Quantidade</th>
-              <th>Preço Médio</th>
-              <th>Preço Atual</th>
-              <th>P&L%</th>
-              <th>Valor USD</th>
+              <th>Par</th><th>Quantidade</th><th>Preço Médio</th><th>Preço Atual</th><th>P&L%</th><th>Valor USD</th>
             </tr>
           </thead>
           <tbody id="pos-tbody"></tbody>

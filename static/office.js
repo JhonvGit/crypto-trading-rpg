@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════
-   Trading Office — Isométrico 3D · 10 Robôs Traders
-   Textos de decisão · Mini-gráficos · Modal · Knowledge Share
+   Trading Office — Google Style Isométrico
+   Sala 20x14 · Personagens humanoides · Design moderno
    ═══════════════════════════════════════════════════════════ */
 
 // ── CANVAS / ELEMENTOS ────────────────────────────────────
@@ -9,8 +9,8 @@ const canvas     = document.getElementById("office-canvas");
 const ctx        = canvas.getContext("2d");
 const miniCanvas = document.getElementById("mini-chart");
 const miniCtx    = miniCanvas.getContext("2d");
-miniCanvas.width  = 290;
-miniCanvas.height = 110;
+miniCanvas.width  = 300;
+miniCanvas.height = 100;
 
 function resizeCanvas() {
   canvas.width  = wrap.clientWidth;
@@ -20,7 +20,7 @@ resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
 // ── CÂMERA ────────────────────────────────────────────────
-let cam  = { x: 0, y: -60, zoom: 1.0 };
+let cam  = { x: 0, y: -80, zoom: 0.9 };
 let drag = { down: false, sx: 0, sy: 0, cx: 0, cy: 0 };
 let mouse = { cx: -999, cy: -999 };
 
@@ -41,30 +41,15 @@ window.addEventListener("mousemove", e => {
 });
 canvas.addEventListener("wheel", e => {
   e.preventDefault();
-  cam.zoom = Math.max(0.4, Math.min(2.5, cam.zoom - e.deltaY * 0.001));
+  cam.zoom = Math.max(0.4, Math.min(2.2, cam.zoom - e.deltaY * 0.001));
 }, { passive: false });
 
-document.getElementById("btn-zi").onclick = () => cam.zoom = Math.min(2.5, cam.zoom + 0.15);
-document.getElementById("btn-zo").onclick = () => cam.zoom = Math.max(0.4, cam.zoom - 0.15);
-document.getElementById("btn-zr").onclick = () => { cam.x = 0; cam.y = -60; cam.zoom = 1.0; };
-
-// Clique no canvas para abrir modal
-canvas.addEventListener("click", e => {
-  const r = canvas.getBoundingClientRect();
-  const cx = e.clientX - r.left, cy = e.clientY - r.top;
-  DESKS.forEach((desk, i) => {
-    if (!agentsData[i]) return;
-    const { x, y } = iso(desk.gx - 0.5, desk.gy - 0.5);
-    const s = world2screen(x, y);
-    const z = cam.zoom;
-    if (cx > s.x - 18*z && cx < s.x + 18*z && cy > s.y - 42*z && cy < s.y + 2*z) {
-      openModal(agentsData[i]);
-    }
-  });
-});
+document.getElementById("btn-zi").onclick = () => cam.zoom = Math.min(2.2, cam.zoom + 0.12);
+document.getElementById("btn-zo").onclick = () => cam.zoom = Math.max(0.4, cam.zoom - 0.12);
+document.getElementById("btn-zr").onclick = () => { cam.x = 0; cam.y = -80; cam.zoom = 0.9; };
 
 // ── PROJEÇÃO ISO ──────────────────────────────────────────
-const TILE_W = 64, TILE_H = 32, WALL_H = 80;
+const TILE_W = 56, TILE_H = 28, WALL_H = 90;
 
 function iso(gx, gy) {
   return { x: (gx - gy) * (TILE_W / 2), y: (gx + gy) * (TILE_H / 2) };
@@ -76,24 +61,41 @@ function world2screen(wx, wy) {
   };
 }
 
-// ── PALETA ────────────────────────────────────────────────
+// ── PALETA GOOGLE ─────────────────────────────────────────
 const C = {
-  floor1:"#2a2a40", floor2:"#242438",
-  wallL:"#1e1e30",  wallR:"#181828",
-  desk:"#4a3a2a",   deskT:"#5a4a3a", deskS:"#3a2a1a",
-  chair:"#2a4a3a",
-  screen:"#0a0a1a",
-  plant1:"#1e3a1e", plant2:"#2a4a2a", pot:"#4a2a2a",
-  agentC:["#ffd700","#00ff88","#ff4466","#00bfff","#e056fd",
-          "#ff9500","#00ffff","#ff1493","#7fff00","#ff6347"],
+  floor1: "#f8f9fa", floor2: "#e8eaed", floorDark: "#dadce0",
+  wall: "#fff", wallShade: "#e8eaed",
+  desk: "#fff", deskEdge: "#dadce0",
+  glass: "rgba(66,133,244,0.08)",
+  plant: "#34a853", plantDark: "#188038", pot: "#dadce0",
+  sky: "#4285f4",
+  // Cores de roupa dos humanoides (blazers coloridos)
+  clothes: ["#4285F4","#EA4335","#FBBC05","#34A853","#a855f7","#06b6d4","#f59e0b","#ec4899","#10b981","#6366f1"],
+  skin: "#ffd1a3",
+  hair: ["#1a1a1a","#4a2f1a","#6e3f1e","#8b5a2b","#d4af37"],
 };
 
-// ── LAYOUT ────────────────────────────────────────────────
-const ROOM_W = 14, ROOM_H = 10;
+// ── LAYOUT SALA MAIOR 20x14 ──────────────────────────────
+const ROOM_W = 20, ROOM_H = 14;
+
+// 10 mesas: distribuídas em clusters
 const DESKS = [
-  {gx:2,gy:2},{gx:4,gy:2},{gx:6,gy:2},{gx:8,gy:2},{gx:10,gy:2},
-  {gx:2,gy:6},{gx:4,gy:6},{gx:6,gy:6},{gx:8,gy:6},{gx:10,gy:6},
+  {gx:3, gy:3},  {gx:5, gy:3},  {gx:7, gy:3},
+  {gx:3, gy:6},  {gx:5, gy:6},
+  {gx:10,gy:4},  {gx:12,gy:4},  {gx:14,gy:4},
+  {gx:10,gy:8},  {gx:12,gy:8},
 ];
+
+// Elementos decorativos
+const PLANTS = [
+  {gx:1,gy:1}, {gx:18,gy:1}, {gx:1,gy:12}, {gx:18,gy:12},
+  {gx:8,gy:10}, {gx:16,gy:10}
+];
+
+const MEETING_TABLE = {gx:3, gy:10, w:4, h:2}; // Mesa oval reunião
+const LOUNGE_SOFAS = [{gx:16,gy:6},{gx:17,gy:7}]; // Sofás coloridos
+const WHITEBOARD = {gx:10, gy:0.2}; // Quadro branco na parede
+const TV_WALL = {gx:6, gy:0.2}; // TV grande dashboard
 
 // ── ESTADO ────────────────────────────────────────────────
 let agentsData   = [];
@@ -102,32 +104,34 @@ let elimCount    = 0;
 let hoveredAgent = null;
 let time         = 0;
 
-// Bolhas de decisão por agente: { text, reason, side, t, alpha }
-const decisionBubbles = {};
-
 // ── TILES / PAREDES ───────────────────────────────────────
-function drawTile(gx, gy, fill, stroke="#1a1a28") {
+function drawTile(gx, gy, fill) {
   const {x,y} = iso(gx,gy), s = world2screen(x,y);
   const hw = (TILE_W/2)*cam.zoom, hh = (TILE_H/2)*cam.zoom;
   ctx.beginPath();
   ctx.moveTo(s.x, s.y-hh); ctx.lineTo(s.x+hw, s.y);
   ctx.lineTo(s.x, s.y+hh); ctx.lineTo(s.x-hw, s.y);
   ctx.closePath();
-  ctx.fillStyle=fill; ctx.strokeStyle=stroke; ctx.lineWidth=0.5;
+  ctx.fillStyle=fill; ctx.strokeStyle=C.floorDark; ctx.lineWidth=0.5;
   ctx.fill(); ctx.stroke();
 }
 
 function drawWallBack(gx, gy) {
   const {x,y}=iso(gx,gy), s=world2screen(x,y);
   const hw=(TILE_W/2)*cam.zoom, hh=(TILE_H/2)*cam.zoom, wh=WALL_H*cam.zoom;
-  ctx.strokeStyle="#0f0f1a"; ctx.lineWidth=1;
-  [[C.wallL,[s.x-hw,s.y,s.x,s.y-hh,s.x,s.y-hh-wh,s.x-hw,s.y-wh]],
-   [C.wallR,[s.x,s.y-hh,s.x+hw,s.y,s.x+hw,s.y-wh,s.x,s.y-hh-wh]]
-  ].forEach(([fill,pts])=>{
-    ctx.beginPath(); ctx.moveTo(pts[0],pts[1]);
-    for(let i=2;i<pts.length;i+=2) ctx.lineTo(pts[i],pts[i+1]);
-    ctx.closePath(); ctx.fillStyle=fill; ctx.fill(); ctx.stroke();
-  });
+  // Parede branca com sombra
+  ctx.fillStyle=C.wall;
+  ctx.strokeStyle="#ccc"; ctx.lineWidth=1;
+  ctx.beginPath();
+  ctx.moveTo(s.x-hw,s.y); ctx.lineTo(s.x,s.y-hh);
+  ctx.lineTo(s.x,s.y-hh-wh); ctx.lineTo(s.x-hw,s.y-wh);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  
+  ctx.fillStyle=C.wallShade;
+  ctx.beginPath();
+  ctx.moveTo(s.x,s.y-hh); ctx.lineTo(s.x+hw,s.y);
+  ctx.lineTo(s.x+hw,s.y-wh); ctx.lineTo(s.x,s.y-hh-wh);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
 }
 
 function drawWallLeft(gx, gy) {
@@ -137,323 +141,519 @@ function drawWallLeft(gx, gy) {
   ctx.moveTo(s.x-hw,s.y); ctx.lineTo(s.x,s.y+hh);
   ctx.lineTo(s.x,s.y+hh-wh); ctx.lineTo(s.x-hw,s.y-wh);
   ctx.closePath();
-  ctx.fillStyle=C.wallL; ctx.strokeStyle="#0f0f1a"; ctx.lineWidth=1;
+  ctx.fillStyle=C.wall; ctx.strokeStyle="#ccc"; ctx.lineWidth=1;
   ctx.fill(); ctx.stroke();
+}
+
+// Janela grande na parede (skyline fictício)
+function drawWindow(gx, gy, w) {
+  const {x,y}=iso(gx,gy), s=world2screen(x,y-WALL_H*0.6);
+  const z=cam.zoom, ww=w*TILE_W*z, hh=40*z;
+  ctx.fillStyle=C.sky;
+  ctx.fillRect(s.x-ww/2, s.y-hh, ww, hh);
+  ctx.strokeStyle="#4285f480"; ctx.lineWidth=2;
+  ctx.strokeRect(s.x-ww/2, s.y-hh, ww, hh);
+  // Divisórias da janela
+  for(let i=1; i<w; i++) {
+    const px = s.x - ww/2 + (ww/w)*i;
+    ctx.beginPath(); ctx.moveTo(px, s.y-hh); ctx.lineTo(px, s.y); ctx.stroke();
+  }
+  // Skyline simples
+  ctx.fillStyle="rgba(255,255,255,0.4)";
+  const buildings = [0.6,0.8,0.5,0.9,0.6,0.7];
+  buildings.forEach((h,i)=>{
+    const bx = s.x-ww/2 + (ww/buildings.length)*i;
+    const bw = ww/buildings.length - 2*z;
+    const bh = hh*h*0.5;
+    ctx.fillRect(bx, s.y-bh, bw, bh);
+  });
 }
 
 // ── MÓVEIS ────────────────────────────────────────────────
 function drawDesk(gx, gy, idx) {
   const {x,y}=iso(gx,gy), s=world2screen(x,y);
-  const z=cam.zoom, hw=(TILE_W/2-4)*z, hh=(TILE_H/2-2)*z, dh=20*z;
-  // topo
+  const z=cam.zoom, hw=(TILE_W/2-6)*z, hh=(TILE_H/2-3)*z, dh=18*z;
+  // topo branco
   ctx.beginPath();
   ctx.moveTo(s.x,s.y-dh-hh); ctx.lineTo(s.x+hw,s.y-dh);
   ctx.lineTo(s.x,s.y-dh+hh); ctx.lineTo(s.x-hw,s.y-dh);
-  ctx.closePath(); ctx.fillStyle=C.deskT; ctx.strokeStyle="#2a1a0a";
-  ctx.lineWidth=1; ctx.fill(); ctx.stroke();
+  ctx.closePath();
+  ctx.fillStyle=C.desk; ctx.strokeStyle=C.deskEdge; ctx.lineWidth=1;
+  ctx.fill(); ctx.stroke();
   // lado esq
   ctx.beginPath();
   ctx.moveTo(s.x-hw,s.y-dh); ctx.lineTo(s.x,s.y-dh+hh);
   ctx.lineTo(s.x,s.y+hh); ctx.lineTo(s.x-hw,s.y);
-  ctx.closePath(); ctx.fillStyle=C.desk; ctx.fill(); ctx.stroke();
+  ctx.closePath();
+  ctx.fillStyle=C.wallShade; ctx.fill(); ctx.stroke();
   // lado dir
   ctx.beginPath();
   ctx.moveTo(s.x,s.y-dh+hh); ctx.lineTo(s.x+hw,s.y-dh);
   ctx.lineTo(s.x+hw,s.y); ctx.lineTo(s.x,s.y+hh);
-  ctx.closePath(); ctx.fillStyle=C.deskS; ctx.fill(); ctx.stroke();
-  // monitor com mini-gráfico
-  drawMonitor(s.x-6*z, s.y-dh-14*z, z, idx);
-  // teclado
-  ctx.fillStyle="#2a2a3a";
-  ctx.fillRect(s.x+2*z, s.y-dh-2*z, 14*z, 5*z);
+  ctx.closePath();
+  ctx.fillStyle=C.floorDark; ctx.fill(); ctx.stroke();
+  
+  // Monitor moderno
+  drawMonitor(s.x-4*z, s.y-dh-12*z, z, idx);
+  
+  // Teclado
+  ctx.fillStyle="#e8eaed";
+  ctx.fillRect(s.x+4*z, s.y-dh-2*z, 12*z, 4*z);
 }
 
 function drawMonitor(sx, sy, z, idx) {
-  const w=26*z, h=20*z;
-  ctx.fillStyle="#1a1a2a";
+  const w=24*z, h=18*z;
+  // Moldura preta
+  ctx.fillStyle="#202124";
   ctx.fillRect(sx-w/2, sy-h, w, h);
+  
   const agent = agentsData[idx];
   if (agent) {
-    const bg = agent.pnl_pct >= 0 ? "#003820" : "#380018";
+    const bg = agent.pnl_pct >= 0 ? "#0d3d2d" : "#3d0d1d";
     ctx.fillStyle = bg;
-    ctx.fillRect(sx-w/2+2*z, sy-h+2*z, w-4*z, h-4*z);
-    // sparkline de velas simplificadas
+    ctx.fillRect(sx-w/2+1.5*z, sy-h+1.5*z, w-3*z, h-3*z);
+    
+    // Sparkline
     const hist = agent.history || [];
     if (hist.length > 1) {
-      const tw=w-6*z, th=h-6*z;
-      const ox=sx-w/2+3*z, oy=sy-4*z;
-      const vals = hist.map(p=>p.v);
+      const tw=w-5*z, th=h-5*z;
+      const ox=sx-w/2+2.5*z, oy=sy-2.5*z;
+      const vals = hist.slice(-20).map(p=>p.v);
       const minV=Math.min(...vals), maxV=Math.max(...vals);
       const range=maxV-minV||1;
-      ctx.strokeStyle = agent.pnl_pct>=0?"#00ff88":"#ff4466";
-      ctx.lineWidth=1;
+      ctx.strokeStyle = agent.pnl_pct>=0?"#34a853":"#ea4335";
+      ctx.lineWidth=1.2;
       ctx.beginPath();
-      hist.forEach((p,i)=>{
-        const px=ox+(i/Math.max(hist.length-1,1))*tw;
-        const py=oy-((p.v-minV)/range)*th;
+      vals.forEach((v,i)=>{
+        const px=ox+(i/Math.max(vals.length-1,1))*tw;
+        const py=oy-((v-minV)/range)*th;
         i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
       });
       ctx.stroke();
-      // RSI bar no fundo do monitor
+      
+      // RSI bar no fundo
       if (agent.last_decision) {
         const rsi = agent.last_decision.rsi||50;
-        const rsiW = ((w-4*z)*(rsi/100));
-        ctx.fillStyle = rsi<35?"#00ff88":rsi>65?"#ff4466":"#ffd700";
-        ctx.globalAlpha=0.4;
-        ctx.fillRect(sx-w/2+2*z, sy-4*z, rsiW, 2*z);
+        const rsiW = ((w-3*z)*(rsi/100));
+        ctx.fillStyle = rsi<35?"#34a853":rsi>65?"#ea4335":"#fbbc05";
+        ctx.globalAlpha=0.35;
+        ctx.fillRect(sx-w/2+1.5*z, sy-3*z, rsiW, 1.5*z);
         ctx.globalAlpha=1;
       }
     } else {
-      ctx.fillStyle="#00ff8830";
-      ctx.font=`${5*z}px monospace`;
+      ctx.fillStyle="#34a85360";
+      ctx.font=`${5*z}px sans-serif`;
       ctx.textAlign="center";
-      ctx.fillText("aguard", sx, sy-h/2+2*z);
+      ctx.fillText("...", sx, sy-h/2+2*z);
       ctx.textAlign="left";
     }
-    // LED
-    const blink=Math.sin(time*5+idx)>0?1:0.3;
+    
+    // LED piscando
+    const blink=Math.sin(time*4+idx)>0?1:0.3;
     ctx.globalAlpha=blink;
-    ctx.fillStyle=agent.pnl_pct>=0?"#00ff88":"#ff4466";
-    ctx.fillRect(sx+w/2-5*z, sy-h+2*z, 3*z, 3*z);
+    ctx.fillStyle=agent.pnl_pct>=0?"#34a853":"#ea4335";
+    ctx.beginPath();
+    ctx.arc(sx+w/2-3*z, sy-h+3*z, 2*z, 0, Math.PI*2);
+    ctx.fill();
     ctx.globalAlpha=1;
   } else {
-    ctx.fillStyle="#0a0a1a";
-    ctx.fillRect(sx-w/2+2*z, sy-h+2*z, w-4*z, h-4*z);
+    ctx.fillStyle="#000";
+    ctx.fillRect(sx-w/2+1.5*z, sy-h+1.5*z, w-3*z, h-3*z);
   }
-  ctx.fillStyle="#111";
-  ctx.fillRect(sx-2*z, sy, 4*z, 6*z);
+  // Pé
+  ctx.fillStyle="#333";
+  ctx.fillRect(sx-1.5*z, sy, 3*z, 5*z);
 }
 
-function drawChair(gx, gy) {
-  const {x,y}=iso(gx-0.5,gy+0.5), s=world2screen(x,y), z=cam.zoom;
-  ctx.fillStyle=C.chair; ctx.strokeStyle="#0a1a0a"; ctx.lineWidth=0.5;
-  ctx.beginPath(); ctx.arc(s.x,s.y,10*z,0,Math.PI*2); ctx.fill(); ctx.stroke();
-  ctx.fillRect(s.x-6*z, s.y-22*z, 12*z, 14*z);
+function drawChair(gx, gy, color) {
+  const {x,y}=iso(gx-0.4,gy+0.6), s=world2screen(x,y), z=cam.zoom;
+  // Assento colorido estilo ergonômico
+  ctx.fillStyle=color; ctx.strokeStyle="#333"; ctx.lineWidth=0.5;
+  ctx.beginPath(); ctx.arc(s.x,s.y,9*z,0,Math.PI*2); ctx.fill(); ctx.stroke();
+  // Encosto
+  ctx.fillRect(s.x-5*z, s.y-20*z, 10*z, 12*z);
+  ctx.strokeRect(s.x-5*z, s.y-20*z, 10*z, 12*z);
 }
 
 function drawPlant(gx, gy) {
   const {x,y}=iso(gx,gy), s=world2screen(x,y), z=cam.zoom;
-  ctx.fillStyle=C.pot;
+  // Vaso branco moderno
+  ctx.fillStyle="#fff";
+  ctx.strokeStyle="#dadce0"; ctx.lineWidth=1;
   ctx.beginPath();
-  ctx.moveTo(s.x-8*z,s.y); ctx.lineTo(s.x+8*z,s.y);
-  ctx.lineTo(s.x+5*z,s.y+12*z); ctx.lineTo(s.x-5*z,s.y+12*z);
-  ctx.closePath(); ctx.fill();
-  [[0,-1],[-.8,-.5],[.8,-.5]].forEach(([dx,dy])=>{
-    ctx.fillStyle=dx===0?C.plant1:C.plant2;
+  ctx.moveTo(s.x-7*z,s.y); ctx.lineTo(s.x+7*z,s.y);
+  ctx.lineTo(s.x+5*z,s.y+11*z); ctx.lineTo(s.x-5*z,s.y+11*z);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  
+  // Folhas tropicais grandes
+  [[0,-1.2],[-.7,-.6],[.7,-.6],[-.5,-.2],[.5,-.2]].forEach(([dx,dy])=>{
+    ctx.fillStyle=dx===0?C.plant:C.plantDark;
     ctx.beginPath();
-    ctx.ellipse(s.x+dx*14*z,s.y+dy*14*z,10*z,14*z,dx*0.5,0,Math.PI*2);
+    ctx.ellipse(s.x+dx*12*z,s.y+dy*16*z,9*z,13*z,dx*0.6,0,Math.PI*2);
     ctx.fill();
   });
 }
 
-// ── TV NA PAREDE ──────────────────────────────────────────
-function drawWallTV() {
-  const {x,y}=iso(6,0), s=world2screen(x,y-WALL_H*0.6);
-  const z=cam.zoom, w=80*z, h=46*z;
-  ctx.fillStyle="#0a0a1a"; ctx.strokeStyle="#ffd700"; ctx.lineWidth=2;
-  ctx.fillRect(s.x-w/2,s.y-h,w,h); ctx.strokeRect(s.x-w/2,s.y-h,w,h);
-  ctx.fillStyle="#001a00";
-  ctx.fillRect(s.x-w/2+3*z,s.y-h+3*z,w-6*z,h-6*z);
-  ctx.fillStyle="#00ff88"; ctx.font=`bold ${8*z}px monospace`;
-  ctx.textAlign="center";
-  ctx.fillText("📊 TRADING OFFICE", s.x, s.y-h+14*z);
-  const best=agentsData[0];
-  if (best) {
-    const col=best.pnl_pct>=0?"#00ff88":"#ff4466";
-    ctx.fillStyle=col; ctx.font=`${7*z}px monospace`;
-    ctx.fillText(`👑 ${best.emoji} ${best.name}`, s.x, s.y-h+27*z);
-    ctx.fillText(`$${best.value.toFixed(2)}  ${best.pnl_pct>=0?"+":""}${best.pnl_pct.toFixed(1)}%  fee=$${(best.total_fees||0).toFixed(3)}`, s.x, s.y-h+38*z);
+// Mesa de reunião oval
+function drawMeetingTable() {
+  const {gx,gy,w,h} = MEETING_TABLE;
+  const {x,y} = iso(gx+w/2, gy+h/2), s = world2screen(x,y);
+  const z = cam.zoom, rw=(w*TILE_W/2)*z, rh=(h*TILE_H/2)*z;
+  
+  ctx.fillStyle="#fff";
+  ctx.strokeStyle=C.deskEdge; ctx.lineWidth=1.5;
+  ctx.beginPath();
+  ctx.ellipse(s.x, s.y-10*z, rw, rh, 0, 0, Math.PI*2);
+  ctx.fill(); ctx.stroke();
+  
+  // Cadeiras ao redor
+  const chairs = 6;
+  for(let i=0; i<chairs; i++) {
+    const angle = (i/chairs)*Math.PI*2;
+    const cx = s.x + Math.cos(angle)*(rw+8*z);
+    const cy = s.y-10*z + Math.sin(angle)*(rh+6*z);
+    ctx.fillStyle=C.clothes[i%C.clothes.length];
+    ctx.beginPath(); ctx.arc(cx,cy,7*z,0,Math.PI*2); ctx.fill();
   }
+}
+
+// Sofás lounge coloridos
+function drawSofa(gx, gy, color) {
+  const {x,y}=iso(gx,gy), s=world2screen(x,y), z=cam.zoom;
+  ctx.fillStyle=color;
+  ctx.fillRect(s.x-16*z, s.y-8*z, 32*z, 16*z);
+  ctx.fillRect(s.x-16*z, s.y-18*z, 32*z, 10*z); // Encosto
+  ctx.strokeStyle="#333"; ctx.lineWidth=1;
+  ctx.strokeRect(s.x-16*z, s.y-8*z, 32*z, 16*z);
+  ctx.strokeRect(s.x-16*z, s.y-18*z, 32*z, 10*z);
+}
+
+// Whiteboard na parede
+function drawWhiteboard() {
+  const {gx,gy} = WHITEBOARD;
+  const {x,y}=iso(gx,gy), s=world2screen(x,y-WALL_H*0.5);
+  const z=cam.zoom, w=70*z, h=40*z;
+  
+  ctx.fillStyle="#fff";
+  ctx.strokeStyle="#4285f4"; ctx.lineWidth=2;
+  ctx.fillRect(s.x-w/2, s.y-h, w, h);
+  ctx.strokeRect(s.x-w/2, s.y-h, w, h);
+  
+  // Gráfico desenhado (placeholder)
+  ctx.strokeStyle="#ea4335"; ctx.lineWidth=1.5;
+  ctx.beginPath();
+  const pts = [0.3,0.5,0.4,0.7,0.6,0.8];
+  pts.forEach((py,i)=>{
+    const px = s.x-w/2+10*z + (w-20*z)*(i/(pts.length-1));
+    const wy = s.y-h+10*z + (h-20*z)*py;
+    i===0?ctx.moveTo(px,wy):ctx.lineTo(px,wy);
+  });
+  ctx.stroke();
+  
+  ctx.fillStyle="#4285f4"; ctx.font=`bold ${6*z}px sans-serif`;
+  ctx.textAlign="center";
+  ctx.fillText("Performance", s.x, s.y-h+8*z);
   ctx.textAlign="left";
 }
 
-// ── PAINEL DE KNOWLEDGE SHARE (canto esq) ─────────────────
-function drawKnowledgePanel() {
-  if (!agentsData.length) return;
-  const {x,y}=iso(0.5,7), s=world2screen(x,y-WALL_H*0.5);
-  const z=cam.zoom;
-  if (z < 0.6) return; // só mostra em zoom suficiente
-  const w=70*z, h=50*z;
-  ctx.fillStyle="rgba(5,5,20,0.85)";
-  ctx.strokeStyle="#e056fd"; ctx.lineWidth=1;
+// TV Dashboard na parede
+function drawTVDashboard() {
+  const {gx,gy} = TV_WALL;
+  const {x,y}=iso(gx,gy), s=world2screen(x,y-WALL_H*0.6);
+  const z=cam.zoom, w=90*z, h=50*z;
+  
+  ctx.fillStyle="#000";
+  ctx.strokeStyle="#4285f4"; ctx.lineWidth=2.5;
   ctx.fillRect(s.x-w/2,s.y-h,w,h);
   ctx.strokeRect(s.x-w/2,s.y-h,w,h);
-  ctx.fillStyle="#e056fd"; ctx.font=`bold ${6*z}px monospace`;
+  
+  ctx.fillStyle="#001a00";
+  ctx.fillRect(s.x-w/2+3*z,s.y-h+3*z,w-6*z,h-6*z);
+  
+  ctx.fillStyle="#34a853"; ctx.font=`bold ${7*z}px sans-serif`;
   ctx.textAlign="center";
-  ctx.fillText("🔗 KNOWLEDGE", s.x, s.y-h+9*z);
-  ctx.fillStyle="#aaa"; ctx.font=`${5.5*z}px monospace`;
-  // contar signals shared
-  const buys  = agentsData.filter(a=>a.last_decision&&a.last_decision.side==="BUY").length;
-  const sells = agentsData.filter(a=>a.last_decision&&a.last_decision.side==="SELL").length;
-  ctx.fillStyle="#00ff88";
-  ctx.fillText(`▲ ${buys} BUY signals`, s.x, s.y-h+22*z);
-  ctx.fillStyle="#ff4466";
-  ctx.fillText(`▼ ${sells} SELL signals`, s.x, s.y-h+34*z);
-  ctx.fillStyle="#888";
-  ctx.fillText(`pool ativo`, s.x, s.y-h+44*z);
+  ctx.fillText("📊 TRADING OFFICE", s.x, s.y-h+12*z);
+  
+  const best=agentsData[0];
+  if (best) {
+    const col=best.pnl_pct>=0?"#34a853":"#ea4335";
+    ctx.fillStyle=col; ctx.font=`${6*z}px sans-serif`;
+    ctx.fillText(`👑 ${best.emoji} ${best.name}`, s.x, s.y-h+24*z);
+    ctx.fillText(`$${best.value.toFixed(2)}  ${best.pnl_pct>=0?"+":""}${best.pnl_pct.toFixed(1)}%`, s.x, s.y-h+35*z);
+    ctx.font=`${5*z}px sans-serif`;
+    ctx.fillStyle="#888";
+    ctx.fillText(`fee $${(best.total_fees||0).toFixed(3)} · ${best.total_trades||0} trades`, s.x, s.y-h+44*z);
+  }
   ctx.textAlign="left";
 }
 
-// ── ROBÔ TRADER ───────────────────────────────────────────
-function drawRobot(gx, gy, agent, idx) {
-  const bobY = Math.sin(time*2+idx*1.2)*2;
+// ── PERSONAGEM HUMANOIDE ──────────────────────────────────
+function drawHumanoid(gx, gy, agent, idx) {
+  const bobY = Math.sin(time*1.8+idx*1.3)*1.5;
   const {x,y}=iso(gx,gy), s=world2screen(x,y+bobY);
-  const z=cam.zoom, color=C.agentC[idx%C.agentC.length];
-
+  const z=cam.zoom;
+  const clothColor = C.clothes[idx%C.clothes.length];
+  const skinColor = C.skin;
+  const hairColor = C.hair[idx%C.hair.length];
+  
   // Sombra
-  ctx.fillStyle="rgba(0,0,0,0.25)";
-  ctx.beginPath(); ctx.ellipse(s.x,s.y+4*z,12*z,5*z,0,0,Math.PI*2); ctx.fill();
-
-  // Pernas
-  ctx.fillStyle="#1a1a2a";
-  ctx.fillRect(s.x-8*z,s.y+2*z,6*z,10*z);
-  ctx.fillRect(s.x+2*z,s.y+2*z,6*z,10*z);
-
-  // Corpo
-  const bg=ctx.createLinearGradient(s.x-12*z,s.y-16*z,s.x+12*z,s.y+2*z);
-  bg.addColorStop(0,color); bg.addColorStop(1,shade(color,-40));
-  ctx.fillStyle=bg; ctx.strokeStyle="#000"; ctx.lineWidth=1.5;
-  ctx.beginPath(); ctx.roundRect(s.x-12*z,s.y-16*z,24*z,20*z,4*z);
-  ctx.fill(); ctx.stroke();
-
-  // LEDs piscando no corpo
-  const led=Math.sin(time*5+idx)>0?1:0.4;
-  ctx.globalAlpha=led;
-  ctx.fillStyle=agent.pnl_pct>=0?"#00ff88":"#ff4466";
-  [-6,0,6].forEach(ox=>{
-    ctx.beginPath(); ctx.arc(s.x+ox*z,s.y-8*z,2.5*z,0,Math.PI*2); ctx.fill();
-  });
-  ctx.globalAlpha=1;
-
-  // Braços animados
-  const arm=Math.sin(time*2+idx)*0.3;
-  ctx.strokeStyle=color; ctx.lineWidth=4*z; ctx.lineCap="round";
-  ctx.beginPath(); ctx.moveTo(s.x-12*z,s.y-12*z); ctx.lineTo(s.x-18*z,s.y-6*z+arm*8*z); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(s.x+12*z,s.y-12*z); ctx.lineTo(s.x+18*z,s.y-6*z-arm*8*z); ctx.stroke();
-
-  // Cabeça
-  const hg=ctx.createLinearGradient(s.x-10*z,s.y-32*z,s.x+10*z,s.y-16*z);
-  hg.addColorStop(0,shade(color,20)); hg.addColorStop(1,color);
-  ctx.fillStyle=hg; ctx.strokeStyle="#000"; ctx.lineWidth=1.5;
-  ctx.beginPath(); ctx.roundRect(s.x-10*z,s.y-32*z,20*z,16*z,4*z);
-  ctx.fill(); ctx.stroke();
-
-  // Display dos olhos
-  const eyC=agent.pnl_pct>=0?"#00ff88":"#ff4466";
-  ctx.fillStyle=C.screen; ctx.fillRect(s.x-8*z,s.y-30*z,16*z,10*z);
-  ctx.fillStyle=eyC;
-  if (agent.pnl_pct>2) {
-    ctx.fillRect(s.x-6*z,s.y-27*z,4*z,4*z); ctx.fillRect(s.x+2*z,s.y-27*z,4*z,4*z);
-  } else if (agent.pnl_pct<-2) {
-    ctx.fillRect(s.x-6*z,s.y-24*z,4*z,4*z); ctx.fillRect(s.x+2*z,s.y-24*z,4*z,4*z);
-  } else {
-    ctx.fillRect(s.x-6*z,s.y-26*z,4*z,3*z); ctx.fillRect(s.x+2*z,s.y-26*z,4*z,3*z);
+  ctx.fillStyle="rgba(0,0,0,0.15)";
+  ctx.beginPath(); ctx.ellipse(s.x,s.y+3*z,10*z,4*z,0,0,Math.PI*2); ctx.fill();
+  
+  // Estado de animação
+  let armAngle = Math.sin(time*2+idx)*0.2;
+  let headTilt = 0;
+  let expression = "neutral"; // neutral, happy, worried
+  
+  if (agent.last_decision) {
+    const dec = agent.last_decision;
+    if (dec.side === "BUY") {
+      armAngle = -0.6; // Polegar pra cima
+      expression = "happy";
+    } else if (dec.side === "SELL") {
+      headTilt = 0.15;
+      expression = "worried";
+    }
   }
-
-  // Antena
-  ctx.strokeStyle=color; ctx.lineWidth=2*z;
-  ctx.beginPath(); ctx.moveTo(s.x,s.y-32*z); ctx.lineTo(s.x,s.y-40*z); ctx.stroke();
-  ctx.fillStyle=eyC; ctx.beginPath(); ctx.arc(s.x,s.y-40*z,3*z,0,Math.PI*2); ctx.fill();
-
+  
+  if (agent.pnl_pct > 5) {
+    // Comemorando: em pé, braços levantados
+    armAngle = -0.8;
+    expression = "happy";
+  } else if (agent.pnl_pct < -5) {
+    // Desanimado: curvado, cabeça baixa
+    headTilt = 0.3;
+    expression = "worried";
+  }
+  
+  // ── PERNAS ──
+  ctx.fillStyle="#2c2c2c";
+  ctx.fillRect(s.x-7*z, s.y+1*z, 5*z, 9*z); // esq
+  ctx.fillRect(s.x+2*z, s.y+1*z, 5*z, 9*z); // dir
+  
+  // ── CORPO (blazer colorido) ──
+  const grad = ctx.createLinearGradient(s.x-10*z,s.y-18*z,s.x+10*z,s.y+1*z);
+  grad.addColorStop(0, clothColor);
+  grad.addColorStop(1, shadeColor(clothColor,-30));
+  ctx.fillStyle=grad;
+  ctx.strokeStyle="#000"; ctx.lineWidth=1;
+  ctx.beginPath();
+  ctx.roundRect(s.x-10*z, s.y-18*z, 20*z, 20*z, 3*z);
+  ctx.fill(); ctx.stroke();
+  
+  // Crachá na lapela
+  ctx.fillStyle="#fff";
+  ctx.fillRect(s.x+6*z, s.y-14*z, 3*z, 4*z);
+  ctx.fillStyle=clothColor; ctx.font=`${3*z}px sans-serif`; ctx.textAlign="center";
+  ctx.fillText(agent.emoji, s.x+7.5*z, s.y-10.5*z);
+  ctx.textAlign="left";
+  
+  // ── BRAÇOS ──
+  const armL = Math.sin(time*2+idx)*6*z;
+  const armR = Math.cos(time*2+idx)*6*z;
+  
+  // Braço esquerdo
+  ctx.strokeStyle=clothColor; ctx.lineWidth=5*z; ctx.lineCap="round";
+  ctx.beginPath();
+  ctx.moveTo(s.x-10*z, s.y-14*z);
+  ctx.lineTo(s.x-16*z, s.y-8*z+armL+armAngle*10*z);
+  ctx.stroke();
+  // Mão
+  ctx.fillStyle=skinColor;
+  ctx.beginPath(); ctx.arc(s.x-16*z, s.y-8*z+armL+armAngle*10*z, 3*z, 0, Math.PI*2); ctx.fill();
+  
+  // Braço direito
+  ctx.strokeStyle=clothColor;
+  ctx.beginPath();
+  ctx.moveTo(s.x+10*z, s.y-14*z);
+  ctx.lineTo(s.x+16*z, s.y-8*z+armR-armAngle*10*z);
+  ctx.stroke();
+  // Mão
+  ctx.fillStyle=skinColor;
+  ctx.beginPath(); ctx.arc(s.x+16*z, s.y-8*z+armR-armAngle*10*z, 3*z, 0, Math.PI*2); ctx.fill();
+  
+  // ── PESCOÇO ──
+  ctx.fillStyle=skinColor;
+  ctx.fillRect(s.x-3*z, s.y-20*z, 6*z, 4*z);
+  
+  // ── CABEÇA ──
+  ctx.save();
+  ctx.translate(s.x, s.y-26*z);
+  ctx.rotate(headTilt);
+  
+  // Rosto oval
+  const headGrad = ctx.createRadialGradient(0,-2*z,0, 0,-2*z,10*z);
+  headGrad.addColorStop(0, skinColor);
+  headGrad.addColorStop(1, shadeColor(skinColor,-15));
+  ctx.fillStyle=headGrad;
+  ctx.strokeStyle="#000"; ctx.lineWidth=1;
+  ctx.beginPath();
+  ctx.ellipse(0, -2*z, 8*z, 10*z, 0, 0, Math.PI*2);
+  ctx.fill(); ctx.stroke();
+  
+  // Cabelo estilizado
+  ctx.fillStyle=hairColor;
+  ctx.beginPath();
+  ctx.ellipse(0, -8*z, 8*z, 6*z, 0, 0, Math.PI, true);
+  ctx.fill();
+  
+  // ── ROSTO ──
+  // Olhos
+  const eyeY = expression==="worried" ? 0*z : -1*z;
+  ctx.fillStyle="#fff";
+  ctx.beginPath(); ctx.arc(-3*z, eyeY, 2.5*z, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(3*z, eyeY, 2.5*z, 0, Math.PI*2); ctx.fill();
+  
+  // Pupilas
+  const pupilCol = agent.pnl_pct>=0 ? "#34a853" : "#ea4335";
+  ctx.fillStyle=pupilCol;
+  ctx.beginPath(); ctx.arc(-3*z, eyeY, 1.2*z, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(3*z, eyeY, 1.2*z, 0, Math.PI*2); ctx.fill();
+  
+  // Boca
+  ctx.strokeStyle="#000"; ctx.lineWidth=0.8; ctx.lineCap="round";
+  ctx.beginPath();
+  if (expression === "happy") {
+    // Sorriso
+    ctx.arc(0, 3*z, 4*z, 0.2, Math.PI-0.2);
+  } else if (expression === "worried") {
+    // Triste
+    ctx.arc(0, 7*z, 4*z, Math.PI+0.2, -0.2, true);
+  } else {
+    // Neutro
+    ctx.moveTo(-3*z, 4*z); ctx.lineTo(3*z, 4*z);
+  }
+  ctx.stroke();
+  
+  ctx.restore();
+  
   // Badge geração
   const gen=agent.generation||1;
   if (gen>1) {
-    ctx.fillStyle="#e056fd";
-    ctx.beginPath(); ctx.arc(s.x+12*z,s.y-30*z,7*z,0,Math.PI*2); ctx.fill();
-    ctx.fillStyle="#fff"; ctx.font=`bold ${6*z}px monospace`; ctx.textAlign="center";
-    ctx.fillText("G"+gen,s.x+12*z,s.y-27*z); ctx.textAlign="left";
+    ctx.fillStyle=gen===2?"#a855f7":gen===3?"#fbbc05":"#10b981";
+    ctx.beginPath(); ctx.arc(s.x+10*z,s.y-30*z,6*z,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle="#fff"; ctx.font=`bold ${5*z}px sans-serif`; ctx.textAlign="center";
+    ctx.fillText("G"+gen,s.x+10*z,s.y-27*z);
+    ctx.textAlign="left";
   }
-
-  // ── TEXTO DE DECISÃO ACIMA DO ROBÔ ────────────────────
-  drawDecisionText(s, z, agent, idx);
-
+  
+  // ── TEXTO DE DECISÃO ACIMA ────────────────────────────
+  drawDecisionBubble(s, z, agent, idx);
+  
   // ── TOOLTIP ao hover ──────────────────────────────────
-  if (isHovered(s,18*z,44*z)) {
+  if (isHovered(s,16*z,48*z)) {
     hoveredAgent=agent;
     showTooltip(agent);
   }
 }
 
-// ── TEXTO DE DECISÃO ─────────────────────────────────────
-function drawDecisionText(s, z, agent, idx) {
-  if (z < 0.6) return; // só aparece com zoom adequado
-
+// ── BALÃO DE DECISÃO COM SPARKLINE ───────────────────────
+function drawDecisionBubble(s, z, agent, idx) {
+  if (z < 0.6) return;
+  
   const dec = agent.last_decision;
   const lastTrade = agent.trades && agent.trades[0];
-
-  // Linha 1: Razão da decisão (da API /decisions)
+  
   let reasonText = null;
   if (dec && dec.reason) {
     reasonText = `${dec.side==="BUY"?"▲":"▼"} ${dec.symbol||""}: ${dec.reason}`;
   } else if (lastTrade) {
     reasonText = `${lastTrade.side} ${lastTrade.symbol} @ $${Number(lastTrade.price).toFixed(2)}`;
   }
-
-  // Linha 2: Indicadores em tempo real
-  let indLine = null;
+  
+  // Indicadores em pills coloridos
+  let indPills = [];
   if (dec) {
-    indLine = `RSI ${(dec.rsi||0).toFixed(0)} · M${(dec.momentum||0)>=0?"+":""}${(dec.momentum||0).toFixed(1)}% · Z${(dec.zscore||0).toFixed(1)}σ`;
+    const rsi = dec.rsi||0;
+    const rsiCol = rsi<35?"#34a853":rsi>65?"#ea4335":"#fbbc05";
+    indPills.push({text:`RSI ${rsi.toFixed(0)}`, col:rsiCol});
+    
+    if (dec.momentum) {
+      const mCol = dec.momentum>=0?"#34a853":"#ea4335";
+      indPills.push({text:`M${dec.momentum>=0?"+":""}${dec.momentum.toFixed(1)}%`, col:mCol});
+    }
+    if (dec.zscore) {
+      indPills.push({text:`Z${dec.zscore.toFixed(1)}σ`, col:"#4285f4"});
+    }
   }
-
-  // Linha 3: Knowledge share
+  
+  // Knowledge share
   let shareText = null;
   if (dec && (dec.shared_buy>0||dec.shared_sell>0)) {
-    shareText = `🔗 ${dec.shared_buy} buy / ${dec.shared_sell} sell (comunidade)`;
+    shareText = `🔗 ${dec.shared_buy} buy · ${dec.shared_sell} sell`;
   }
-
-  if (!reasonText && !indLine) return;
-
-  const lineH = 10*z;
-  const lines = [reasonText, indLine, shareText].filter(Boolean);
-  const totalH = lines.length * lineH + 6*z;
+  
+  if (!reasonText && indPills.length===0) return;
+  
+  const lineH = 9*z;
+  const lines = [reasonText, ...indPills.map(p=>p.text), shareText].filter(Boolean);
+  const totalH = lines.length * lineH + 10*z;
+  
+  ctx.font = `${6*z}px sans-serif`;
   const maxW = Math.max(...lines.map(l => ctx.measureText(l).width));
-  const boxW = maxW + 12*z;
-
+  const boxW = maxW + 16*z;
+  
   const bx = s.x - boxW/2;
-  const by = s.y - 44*z - totalH - 6*z;
-
-  // Fundo semi-transparente com borda colorida
-  const borderCol = dec && dec.side==="BUY" ? "#00ff88" : dec && dec.side==="SELL" ? "#ff4466" : "#ffd700";
-  ctx.fillStyle = "rgba(5,5,20,0.88)";
+  const by = s.y - 50*z - totalH;
+  
+  // Fundo glassmorphism
+  const borderCol = dec && dec.side==="BUY" ? "#34a853" : dec && dec.side==="SELL" ? "#ea4335" : "#4285f4";
+  ctx.fillStyle = "rgba(17,24,39,0.92)";
   ctx.strokeStyle = borderCol;
   ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.roundRect(bx, by, boxW, totalH, 4*z);
+  ctx.roundRect(bx, by, boxW, totalH, 8*z);
   ctx.fill();
   ctx.stroke();
-
-  // Seta apontando para o robô
+  
+  // Seta apontando
   ctx.fillStyle = borderCol;
   ctx.beginPath();
-  ctx.moveTo(s.x-4*z, by+totalH); ctx.lineTo(s.x+4*z, by+totalH); ctx.lineTo(s.x, by+totalH+5*z);
+  ctx.moveTo(s.x-4*z, by+totalH); ctx.lineTo(s.x+4*z, by+totalH); ctx.lineTo(s.x, by+totalH+6*z);
   ctx.closePath(); ctx.fill();
-
+  
   // Textos
-  ctx.font = `bold ${7*z}px 'Segoe UI', monospace`;
+  ctx.font = `bold ${6.5*z}px sans-serif`;
   ctx.textAlign = "center";
-  lines.forEach((line, i) => {
-    let col = "#e0e0ff";
-    if (i===0) col = borderCol;
-    else if (i===1) col = "#aaaadd";
-    else if (i===2) col = "#e056fd";
-    ctx.fillStyle = col;
-    ctx.fillText(line, s.x, by + (i+1)*lineH + 1*z);
+  let yOff = by + lineH;
+  
+  // Linha 1: razão principal
+  if (reasonText) {
+    ctx.fillStyle = borderCol;
+    ctx.fillText(reasonText, s.x, yOff);
+    yOff += lineH;
+  }
+  
+  // Indicators como pills
+  indPills.forEach(pill => {
+    ctx.fillStyle = pill.col;
+    ctx.font = `${5.5*z}px sans-serif`;
+    ctx.fillText(pill.text, s.x, yOff);
+    yOff += lineH*0.8;
   });
+  
+  // Knowledge share
+  if (shareText) {
+    ctx.fillStyle = "#a855f7";
+    ctx.font = `${5*z}px sans-serif`;
+    ctx.fillText(shareText, s.x, yOff);
+  }
+  
   ctx.textAlign = "left";
-
-  // ── Mini sparkline de RSI no balão ──────────────────
+  
+  // Mini sparkline no fundo do balão
   if (dec && agent.history && agent.history.length > 3) {
-    const chartY = by + totalH - 1*z;
-    const chartH = 8*z;
-    const chartW = boxW - 6*z;
-    const chartX = bx + 3*z;
-    // área
+    const chartY = by + totalH - 2*z;
+    const chartH = 10*z;
+    const chartW = boxW - 8*z;
+    const chartX = bx + 4*z;
+    
     ctx.fillStyle = "rgba(0,0,0,0.3)";
     ctx.fillRect(chartX, chartY-chartH, chartW, chartH);
-    // linha
-    const vals = agent.history.slice(-20).map(h=>h.v);
+    
+    const vals = agent.history.slice(-15).map(h=>h.v);
     const mn=Math.min(...vals), mx=Math.max(...vals), rng=mx-mn||0.01;
-    ctx.strokeStyle = borderCol; ctx.lineWidth=1;
+    ctx.strokeStyle = borderCol; ctx.lineWidth=1.2;
     ctx.beginPath();
     vals.forEach((v,i)=>{
       const px=chartX+i/(vals.length-1)*chartW;
@@ -487,8 +687,8 @@ function isHovered(s, hw, hh) {
   return mouse.cx>s.x-hw && mouse.cx<s.x+hw && mouse.cy>s.y-hh && mouse.cy<s.y;
 }
 
-// ── COR HELPERS ───────────────────────────────────────────
-function shade(hex, p) {
+// ── COR HELPER ────────────────────────────────────────────
+function shadeColor(hex, p) {
   const n=parseInt(hex.slice(1),16);
   const r=Math.max(0,Math.min(255,(n>>16)+p));
   const g=Math.max(0,Math.min(255,((n>>8)&0xff)+p));
@@ -496,41 +696,59 @@ function shade(hex, p) {
   return `rgb(${r},${g},${b})`;
 }
 
+// ── CLIQUE NO CANVAS (abrir modal) ────────────────────────
+canvas.addEventListener("click", e => {
+  const r = canvas.getBoundingClientRect();
+  const cx = e.clientX - r.left, cy = e.clientY - r.top;
+  DESKS.forEach((desk, i) => {
+    if (!agentsData[i]) return;
+    const { x, y } = iso(desk.gx - 0.5, desk.gy - 0.5);
+    const s = world2screen(x, y);
+    const zz = cam.zoom;
+    if (cx > s.x - 16*zz && cx < s.x + 16*zz && cy > s.y - 48*zz && cy < s.y + 4*zz) {
+      openModal(agentsData[i]);
+    }
+  });
+});
+
 // ── MINI CHART LATERAL ────────────────────────────────────
 function drawMiniChart() {
   const W=miniCanvas.width, H=miniCanvas.height;
   miniCtx.clearRect(0,0,W,H);
-  miniCtx.fillStyle="rgba(0,0,0,0.4)"; miniCtx.fillRect(0,0,W,H);
+  miniCtx.fillStyle="rgba(0,0,0,0.5)"; miniCtx.fillRect(0,0,W,H);
+  
   const allVals=agentsData.flatMap(a=>(a.history||[]).map(h=>h.v));
   if (allVals.length<2) return;
   const minV=Math.min(...allVals,45), maxV=Math.max(...allVals,55);
-  const range=maxV-minV||1, PAD=20, cw=W-PAD*2, ch=H-PAD*2;
-  // linha de aporte $50
+  const range=maxV-minV||1, PAD=18, cw=W-PAD*2, ch=H-PAD*2;
+  
+  // Linha de aporte $50
   const baseY=H-PAD-((50-minV)/range)*ch;
-  miniCtx.strokeStyle="#444"; miniCtx.setLineDash([4,4]); miniCtx.lineWidth=1;
+  miniCtx.strokeStyle="#4285f440"; miniCtx.setLineDash([4,3]); miniCtx.lineWidth=1;
   miniCtx.beginPath(); miniCtx.moveTo(PAD,baseY); miniCtx.lineTo(W-PAD,baseY); miniCtx.stroke();
   miniCtx.setLineDash([]);
-  miniCtx.fillStyle="#555"; miniCtx.font="9px monospace";
+  miniCtx.fillStyle="#4285f4"; miniCtx.font="8px sans-serif";
   miniCtx.fillText("$50",2,baseY-2);
-  // top 3 agentes
+  
+  // Top 3
   agentsData.slice(0,3).forEach((agent,idx)=>{
     const pts=agent.history||[];
     if(pts.length<2) return;
     const xStep=cw/Math.max(pts.length-1,1);
-    const color=C.agentC[idx%C.agentC.length];
-    miniCtx.strokeStyle=color; miniCtx.lineWidth=2; miniCtx.globalAlpha=1;
+    const color=C.clothes[idx%C.clothes.length];
+    miniCtx.strokeStyle=color; miniCtx.lineWidth=2.5; miniCtx.globalAlpha=0.9;
     miniCtx.beginPath();
     pts.forEach((p,i)=>{
       const px=PAD+i*xStep, py=H-PAD-((p.v-minV)/range)*ch;
       i===0?miniCtx.moveTo(px,py):miniCtx.lineTo(px,py);
     });
     miniCtx.stroke();
-    // nome do agente no final
+    
     if(pts.length>0){
       const last=pts[pts.length-1];
       const lx=PAD+(pts.length-1)*xStep, ly=H-PAD-((last.v-minV)/range)*ch;
-      miniCtx.fillStyle=color; miniCtx.font="8px monospace";
-      miniCtx.fillText(agent.emoji,lx+2,ly+3);
+      miniCtx.fillStyle=color; miniCtx.font="9px sans-serif";
+      miniCtx.fillText(agent.emoji,lx+3,ly+4);
     }
   });
   miniCtx.globalAlpha=1;
@@ -541,21 +759,37 @@ function updateRanking() {
   const el=document.getElementById("ranking-list"); el.innerHTML="";
   agentsData.forEach((a,i)=>{
     const pnlC=a.pnl_pct>0?"up":a.pnl_pct<0?"dn":"nt";
+    const barPct = Math.min(100, Math.max(0, ((a.value-50)/50)*100));
+    const barCol = a.pnl_pct>=0 ? "#34a853" : "#ea4335";
+    
     const div=document.createElement("div");
     div.className="rank-row"+(i===0?" leader":"");
     div.innerHTML=`
-      <div class="rr-pos">${["🥇","🥈","🥉"][i]||i+1}</div>
-      <div class="rr-emoji">${a.emoji}</div>
+      <div class="rr-avatar">${a.emoji}</div>
       <div class="rr-info">
         <div class="rr-name">${a.name}</div>
         <div class="rr-meta">Gen ${a.generation||1} · ${a.win_rate||0}% win · ${a.total_trades||0} trades</div>
-        <div class="rr-val">$${a.value.toFixed(2)} <span style="color:#888;font-size:0.68rem">fee $${(a.total_fees||0).toFixed(3)}</span></div>
+        <div class="rr-bar-wrap"><div class="rr-bar" style="width:${barPct}%;background:${barCol}"></div></div>
       </div>
-      <div class="rr-pnl ${pnlC}">${a.pnl_pct>=0?"+":""}${a.pnl_pct.toFixed(1)}%</div>
+      <div class="rr-right">
+        <div class="rr-val">$${a.value.toFixed(2)}</div>
+        <div class="rr-pnl ${pnlC}">${a.pnl_pct>=0?"+":""}${a.pnl_pct.toFixed(1)}%</div>
+      </div>
     `;
     div.onclick=()=>openModal(a);
     el.appendChild(div);
   });
+}
+
+// ── GLOBAL STATS ──────────────────────────────────────────
+function updateGlobalStats() {
+  const totalTrades = agentsData.reduce((s,a)=>(a.total_trades||0)+s, 0);
+  const totalFees = agentsData.reduce((s,a)=>(a.total_fees||0)+s, 0);
+  const poolSize = agentsData.filter(a=>a.last_decision).length;
+  
+  document.getElementById("gs-trades").textContent = totalTrades;
+  document.getElementById("gs-fees").textContent = "$"+totalFees.toFixed(2);
+  document.getElementById("gs-pool").textContent = poolSize;
 }
 
 // ── FEED DE ATIVIDADE ─────────────────────────────────────
@@ -564,13 +798,21 @@ function addActivity(emoji, name, type, text, fee) {
   const div=document.createElement("div"); div.className=`act-item ${type}`;
   const now=new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
   const feeStr = fee>0?`<span class="act-fee"> fee $${fee.toFixed(4)}</span>`:"";
+  
+  let pillClass = type;
+  let pillText = type.toUpperCase();
+  if (type==="ev") { pillClass="ev"; pillText="EVOLUÇÃO"; }
+  
   div.innerHTML=`
-    <span class="act-agent">${emoji} ${name}</span>
-    <span class="act-${type}">${text}</span>${feeStr}
+    <div class="act-header">
+      <span class="act-agent">${emoji} ${name}</span>
+      <span class="act-pill ${pillClass}">${pillText}</span>
+    </div>
+    <div class="act-detail">${text}${feeStr}</div>
     <span class="act-time">${now}</span>
   `;
   feed.insertBefore(div,feed.firstChild);
-  while(feed.children.length>35) feed.removeChild(feed.lastChild);
+  while(feed.children.length>40) feed.removeChild(feed.lastChild);
 }
 
 // ── TOPBAR ─────────────────────────────────────────────────
@@ -583,31 +825,55 @@ function updateTopbar() {
 // ── RENDER PRINCIPAL ──────────────────────────────────────
 function renderOffice() {
   ctx.clearRect(0,0,canvas.width,canvas.height);
-  ctx.fillStyle="#080818"; ctx.fillRect(0,0,canvas.width,canvas.height);
-
+  
+  // Fundo gradiente
+  const grad = ctx.createRadialGradient(canvas.width*0.4, canvas.height*0.2, 0, canvas.width*0.5, canvas.height*0.5, canvas.height);
+  grad.addColorStop(0, "#1a237e");
+  grad.addColorStop(1, "#0a0e1a");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  
   // Paredes de fundo
   for(let gx=0;gx<ROOM_W;gx++) drawWallBack(gx,0);
   for(let gy=0;gy<ROOM_H;gy++) drawWallLeft(0,gy);
-
-  // Piso
-  for(let gy=0;gy<ROOM_H;gy++)
-    for(let gx=0;gx<ROOM_W;gx++)
-      drawTile(gx,gy,(gx+gy)%2===0?C.floor1:C.floor2);
-
-  // Plantas
-  [[0,ROOM_H-1],[ROOM_W-1,0],[0,1],[ROOM_W-1,ROOM_H-2]].forEach(([gx,gy])=>drawPlant(gx,gy));
-
-  drawWallTV();
-  drawKnowledgePanel();
-
-  // Ordena mesas por profundidade isométrica
-  const sorted=[...DESKS].sort((a,b)=>(a.gx+a.gy)-(b.gx+b.gy));
-  sorted.forEach((desk,i)=>{
-    drawChair(desk.gx,desk.gy);
-    drawDesk(desk.gx,desk.gy,i);
-    if(agentsData[i]) drawRobot(desk.gx-0.5,desk.gy-0.5,agentsData[i],i);
+  
+  // Janelas
+  drawWindow(4, 0, 4);
+  drawWindow(12, 0, 3);
+  
+  // Piso (hexagonal colorido por zona)
+  for(let gy=0;gy<ROOM_H;gy++) {
+    for(let gx=0;gx<ROOM_W;gx++) {
+      let fill = (gx+gy)%2===0 ? C.floor1 : C.floor2;
+      // Zona de reunião com carpete azulado
+      if (gx>=2 && gx<=6 && gy>=9 && gy<=12) {
+        fill = "#e3f2fd";
+      }
+      // Zona lounge com carpete verde
+      if (gx>=15 && gx<=18 && gy>=5 && gy<=9) {
+        fill = "#e8f5e9";
+      }
+      drawTile(gx,gy,fill);
+    }
+  }
+  
+  // Decoração
+  drawTVDashboard();
+  drawWhiteboard();
+  PLANTS.forEach(p=>drawPlant(p.gx,p.gy));
+  drawMeetingTable();
+  LOUNGE_SOFAS.forEach((sf,i)=>drawSofa(sf.gx,sf.gy,C.clothes[(i+5)%C.clothes.length]));
+  
+  // Ordenar objetos por profundidade ISO
+  const sorted=[...DESKS].map((d,i)=>({...d,i})).sort((a,b)=>(a.gx+a.gy)-(b.gx+b.gy));
+  
+  sorted.forEach(({gx,gy,i})=>{
+    const chairColor = C.clothes[i%C.clothes.length];
+    drawChair(gx,gy,chairColor);
+    drawDesk(gx,gy,i);
+    if(agentsData[i]) drawHumanoid(gx-0.5,gy-0.5,agentsData[i],i);
   });
-
+  
   time+=0.016;
 }
 
@@ -620,7 +886,6 @@ let   modalAgent = null;
 function openModal(agent) {
   modalAgent = agent;
   modal.classList.add("open");
-  // Buscar dados completos da API
   fetch(`/api/agents/${agent.id}`)
     .then(r=>r.json())
     .then(d=>fillModal(d))
@@ -628,11 +893,13 @@ function openModal(agent) {
 }
 
 function fillModal(a) {
-  document.getElementById("modal-emoji").textContent = a.emoji;
+  document.getElementById("modal-avatar").textContent = a.emoji;
   document.getElementById("modal-name").textContent  = `${a.name}`;
-  document.getElementById("modal-class").textContent = `${a.class} — Gen ${a.generation||1} — ${(a.symbols||[]).join(", ")}`;
-
-  // Stats
+  
+  const gen = a.generation||1;
+  const genClass = gen===1?"g1":gen===2?"g2":gen===3?"g3":"g4";
+  document.getElementById("modal-class").innerHTML = `${a.class} <span class="gen-badge ${genClass}">Gen ${gen}</span> · ${(a.symbols||[]).join(", ")}`;
+  
   const pnlPos = (a.pnl_pct||0)>=0;
   document.getElementById("ms-v").textContent = `$${(a.value||0).toFixed(2)}`;
   document.getElementById("ms-p").textContent = `${pnlPos?"+":""}${(a.pnl_pct||0).toFixed(2)}%`;
@@ -640,22 +907,22 @@ function fillModal(a) {
   document.getElementById("ms-w").textContent = `${a.win_rate||0}%`;
   document.getElementById("ms-f").textContent = `$${(a.total_fees||0).toFixed(4)}`;
   document.getElementById("ms-t").textContent = a.total_trades||0;
-  document.getElementById("ms-g").textContent = `Gen ${a.generation||1}`;
-
-  // Aba Estratégia
+  document.getElementById("ms-g").textContent = `Gen ${gen}`;
+  
   document.getElementById("s-desc").textContent  = a.strategy_desc  || "—";
   document.getElementById("s-ml").textContent    = a.ml_tech         || "—";
   document.getElementById("s-model").textContent = a.ml_model        || "—";
+  
   const inds = document.getElementById("s-indicators"); inds.innerHTML="";
   (a.indicators||[]).forEach(ind=>{
     const tag=document.createElement("span"); tag.className="indicator-tag";
     tag.textContent=ind; inds.appendChild(tag);
   });
+  
   const riskEl = document.getElementById("s-risk"); riskEl.innerHTML="";
   const r=a.risk||""; const cls=r.toLowerCase().includes("agress")?"high":r.toLowerCase().includes("conser")?"low":"medium";
   riskEl.innerHTML=`<span class="risk-badge ${cls}">${r||"Moderado"}</span>`;
-
-  // Aba Trades
+  
   const tbody=document.getElementById("trades-tbody"); tbody.innerHTML="";
   const noT=document.getElementById("no-trades");
   const trades=a.trades||[];
@@ -664,7 +931,7 @@ function fillModal(a) {
     noT.style.display="none";
     trades.forEach(t=>{
       const pnl=Number(t.pnl)||0, fee=Number(t.fee)||0;
-      const ts=t.ts?new Date(t.ts).toLocaleTimeString("pt-BR"):"-";
+      const ts=t.ts?new Date(t.ts).toLocaleTimeString("pt-BR"):"—";
       tbody.innerHTML+=`<tr>
         <td>${ts}</td>
         <td>${t.symbol}</td>
@@ -676,8 +943,7 @@ function fillModal(a) {
       </tr>`;
     });
   }
-
-  // Aba Posições
+  
   const ptbody=document.getElementById("pos-tbody"); ptbody.innerHTML="";
   const noP=document.getElementById("no-pos");
   const positions=a.positions||[];
@@ -685,7 +951,7 @@ function fillModal(a) {
   else {
     noP.style.display="none";
     positions.forEach(p=>{
-      const col=p.pnl_pct>=0?"#00ff88":"#ff4466";
+      const col=p.pnl_pct>=0?"#34a853":"#ea4335";
       ptbody.innerHTML+=`<tr>
         <td>${p.symbol}</td>
         <td>${p.qty}</td>
@@ -696,52 +962,50 @@ function fillModal(a) {
       </tr>`;
     });
   }
-
-  // Overview: last_decision info
-  const hist=a.history||[];
-  drawModalChart(hist, a.initial_balance||50);
-
-  // Ativar aba overview
+  
+  drawModalChart(a.history||[], a.initial_balance||50);
   switchTab("overview");
 }
 
 function drawModalChart(history, initial) {
-  modalChart.width  = modalChart.offsetWidth || 800;
-  modalChart.height = 180;
+  modalChart.width  = modalChart.offsetWidth || 820;
+  modalChart.height = 200;
   const W=modalChart.width, H=modalChart.height;
   mCtx.clearRect(0,0,W,H);
   mCtx.fillStyle="#0a0a1a"; mCtx.fillRect(0,0,W,H);
+  
   if(history.length<2) {
-    mCtx.fillStyle="#444"; mCtx.font="14px monospace"; mCtx.textAlign="center";
+    mCtx.fillStyle="#555"; mCtx.font="13px sans-serif"; mCtx.textAlign="center";
     mCtx.fillText("Aguardando dados...", W/2, H/2);
     return;
   }
+  
   const vals=history.map(h=>h.v);
-  const minV=Math.min(...vals,initial*0.8), maxV=Math.max(...vals,initial*1.1);
+  const minV=Math.min(...vals,initial*0.8), maxV=Math.max(...vals,initial*1.15);
   const range=maxV-minV||1;
-  const PAD=30, cw=W-PAD*2, ch=H-PAD*2;
-
-  // Grade horizontal
+  const PAD=35, cw=W-PAD*2, ch=H-PAD*2;
+  
+  // Grade
   [0,25,50,75,100].forEach(pct=>{
     const v=minV+(range*pct/100);
     const py=H-PAD-((v-minV)/range)*ch;
-    mCtx.strokeStyle="#1a1a35"; mCtx.lineWidth=1;
+    mCtx.strokeStyle="rgba(255,255,255,0.05)"; mCtx.lineWidth=1;
     mCtx.beginPath(); mCtx.moveTo(PAD,py); mCtx.lineTo(W-PAD,py); mCtx.stroke();
-    mCtx.fillStyle="#444"; mCtx.font="9px monospace"; mCtx.textAlign="right";
-    mCtx.fillText(`$${v.toFixed(1)}`,PAD-3,py+3);
+    mCtx.fillStyle="#555"; mCtx.font="9px sans-serif"; mCtx.textAlign="right";
+    mCtx.fillText(`$${v.toFixed(1)}`,PAD-4,py+3);
   });
-
-  // Linha de aporte inicial
+  
+  // Linha de aporte
   const baseY=H-PAD-((initial-minV)/range)*ch;
-  mCtx.strokeStyle="#ffd70060"; mCtx.setLineDash([6,4]); mCtx.lineWidth=1.5;
+  mCtx.strokeStyle="#4285f460"; mCtx.setLineDash([5,3]); mCtx.lineWidth=1.5;
   mCtx.beginPath(); mCtx.moveTo(PAD,baseY); mCtx.lineTo(W-PAD,baseY); mCtx.stroke();
   mCtx.setLineDash([]);
-  mCtx.fillStyle="#ffd700"; mCtx.font="9px monospace"; mCtx.textAlign="left";
+  mCtx.fillStyle="#4285f4"; mCtx.font="9px sans-serif"; mCtx.textAlign="left";
   mCtx.fillText(`$${initial} (aporte)`,PAD+4,baseY-4);
-
-  // Área sob a curva (gradiente)
+  
+  // Área gradiente
   const lastVal=vals[vals.length-1];
-  const color=lastVal>=initial?"#00ff88":"#ff4466";
+  const color=lastVal>=initial?"#34a853":"#ea4335";
   const grad=mCtx.createLinearGradient(0,PAD,0,H-PAD);
   grad.addColorStop(0,color+"50"); grad.addColorStop(1,color+"00");
   mCtx.beginPath();
@@ -752,7 +1016,7 @@ function drawModalChart(history, initial) {
   });
   mCtx.lineTo(PAD+cw,H-PAD); mCtx.lineTo(PAD,H-PAD); mCtx.closePath();
   mCtx.fillStyle=grad; mCtx.fill();
-
+  
   // Linha principal
   mCtx.strokeStyle=color; mCtx.lineWidth=2.5;
   mCtx.beginPath();
@@ -762,13 +1026,13 @@ function drawModalChart(history, initial) {
     i===0?mCtx.moveTo(px,py):mCtx.lineTo(px,py);
   });
   mCtx.stroke();
-
+  
   // Ponto final
   const lx=PAD+cw, ly=H-PAD-((lastVal-minV)/range)*ch;
   mCtx.fillStyle=color;
   mCtx.beginPath(); mCtx.arc(lx,ly,5,0,Math.PI*2); mCtx.fill();
-  mCtx.fillStyle=color; mCtx.font="bold 11px monospace"; mCtx.textAlign="left";
-  mCtx.fillText(`$${lastVal.toFixed(2)}`,lx+7,ly+4);
+  mCtx.fillStyle=color; mCtx.font="bold 11px sans-serif"; mCtx.textAlign="left";
+  mCtx.fillText(`$${lastVal.toFixed(2)}`,lx+8,ly+4);
 }
 
 // Tabs
@@ -779,7 +1043,6 @@ function switchTab(name) {
   document.querySelectorAll(".tab-btn").forEach(b=>b.classList.toggle("active",b.dataset.tab===name));
   document.querySelectorAll(".tab-pane").forEach(p=>p.classList.toggle("active",p.id===`pane-${name}`));
   if(name==="overview"&&modalAgent) {
-    // re-desenha chart com tamanho atualizado
     setTimeout(()=>{
       if(modalChart.offsetWidth>0) {
         fetch(`/api/agents/${modalAgent.id}`).then(r=>r.json()).then(d=>{
@@ -790,33 +1053,34 @@ function switchTab(name) {
   }
 }
 
-// Fechar modal
 document.getElementById("modal-close").onclick = ()=>modal.classList.remove("open");
 modal.addEventListener("click",e=>{ if(e.target===modal) modal.classList.remove("open"); });
 
 // ── WEBSOCKET ─────────────────────────────────────────────
 function onData(data) {
   if(!data||!data.length) return;
+  
   data.forEach(agent=>{
     if(agent.trades&&agent.trades[0]) {
       const t=agent.trades[0], key=`${agent.id}-${t.id}`;
       if(!activityLog.has(key)){
         activityLog.add(key);
         addActivity(agent.emoji,agent.name,t.side.toLowerCase(),
-          `${t.side} ${t.symbol} @ $${Number(t.price).toFixed(4)}`,Number(t.fee)||0);
+          `${t.symbol} @ $${Number(t.price).toFixed(4)}`,Number(t.fee)||0);
       }
     }
     if((agent.generation||1)>1){
       const gk=`evo-${agent.id}`;
       if(!activityLog.has(gk)){
         activityLog.add(gk); elimCount++;
-        addActivity(agent.emoji,agent.name,"ev",`🧬 EVOLUÇÃO Gen ${agent.generation}`);
+        addActivity(agent.emoji,agent.name,"ev",`🧬 Evoluiu para Gen ${agent.generation}`,0);
       }
     }
   });
+  
   agentsData=data;
-  updateRanking(); updateTopbar(); drawMiniChart();
-  // Atualiza modal se aberto
+  updateRanking(); updateTopbar(); updateGlobalStats(); drawMiniChart();
+  
   if(modal.classList.contains("open")&&modalAgent) {
     const updated=data.find(a=>a.id===modalAgent.id);
     if(updated) {
