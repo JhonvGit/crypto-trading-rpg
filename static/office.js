@@ -50,626 +50,205 @@ document.getElementById("btn-zi").onclick = () => cam.zoom = Math.min(2.2, cam.z
 document.getElementById("btn-zo").onclick = () => cam.zoom = Math.max(0.4, cam.zoom - 0.12);
 document.getElementById("btn-zr").onclick = () => { cam.x = CAM_HOME.x; cam.y = CAM_HOME.y; cam.zoom = CAM_HOME.zoom; };
 
-// ── PROJEÇÃO ISO ──────────────────────────────────────────
-const TILE_W = 56, TILE_H = 28, WALL_H = 90;
 
-function iso(gx, gy) {
-  return { x: (gx - gy) * (TILE_W / 2), y: (gx + gy) * (TILE_H / 2) };
-}
+// ── ESTILO HABBO / RETRO VOXEL ─────────────────────────────
+const TILE_W = 60, TILE_H = 30, WALL_H = 100;
+ctx.imageSmoothingEnabled = false;
+
+function iso(gx, gy) { return { x: (gx - gy) * (TILE_W / 2), y: (gx + gy) * (TILE_H / 2) }; }
 function world2screen(wx, wy) {
-  return {
-    x: canvas.width  / 2 + cam.x + wx * cam.zoom,
-    y: canvas.height / 2 + cam.y + wy * cam.zoom
-  };
+  return { x: Math.round(canvas.width / 2 + cam.x + wx * cam.zoom), y: Math.round(canvas.height / 2 + cam.y + wy * cam.zoom) };
 }
 
-// ── PALETA GOOGLE ─────────────────────────────────────────
 const C = {
-  floor1: "#f8f9fa", floor2: "#e8eaed", floorDark: "#dadce0",
-  wall: "#fff", wallShade: "#e8eaed",
-  desk: "#fff", deskEdge: "#dadce0",
-  glass: "rgba(66,133,244,0.08)",
-  plant: "#34a853", plantDark: "#188038", pot: "#dadce0",
-  sky: "#4285f4",
-  // Cores de roupa dos humanoides (blazers coloridos)
-  clothes: [
-    "#4285F4","#EA4335","#FBBC05","#34A853",
-    "#4285F4","#EA4335","#FBBC05","#34A853",
-    "#4285F4","#EA4335","#FBBC05","#34A853",
-    "#4285F4","#EA4335",
-  ],
-  skin: "#ffd1a3",
-  hair: ["#1a1a1a","#4a2f1a","#6e3f1e","#8b5a2b","#d4af37"],
+  floor1: "#6d9bab", floor2: "#7caebd", floorBlock: "#406877",
+  floorWood1: "#c08a54", floorWood2: "#a87747",
+  wall: "#dfe3e0", wallShade: "#c0c4c1", wallDark: "#949996",
+  desk: "#935c38", deskEdge: "#5c3319",
+  clothes: ["#2d7bd1","#d13a2d","#e6a722","#2ca344","#712da6","#2d2d2d","#e0e0e0"],
+  skin: ["#ffce9e", "#e6b07e", "#996b42", "#664021"],
+  hair: ["#1a1a1a","#4a2f1a","#d4af37","#8a2626"]
 };
 
-// ── LAYOUT SALA MAIOR 20x14 ──────────────────────────────
-const ROOM_W = 20, ROOM_H = 14;
-
-// 14 mesas em 2 blocos (2 tiles de folga). Evita reunião (gx 2–6, gy 9–12) e lounge (gx 15–18, gy 5–9).
+const ROOM_W = 16, ROOM_H = 12;
 const DESKS = [
-  {gx:3, gy:3},  {gx:5, gy:3},  {gx:7, gy:3},
-  {gx:3, gy:6},  {gx:5, gy:6},  {gx:7, gy:6},
-  {gx:10,gy:3},  {gx:12,gy:3}, {gx:14,gy:3},
-  {gx:10,gy:6},  {gx:12,gy:6}, {gx:14,gy:6},
-  {gx:10,gy:9},  {gx:12,gy:9},
+  {gx:2, gy:2}, {gx:4, gy:2}, {gx:6, gy:2}, {gx:8, gy:2},
+  {gx:2, gy:5}, {gx:4, gy:5}, {gx:6, gy:5}, {gx:8, gy:5},
+  {gx:2, gy:8}, {gx:4, gy:8}, {gx:6, gy:8}, {gx:8, gy:8},
+  {gx:12, gy:5}, {gx:12, gy:8},
 ];
 
-// Elementos decorativos
-const PLANTS = [
-  {gx:1,gy:1}, {gx:18,gy:1}, {gx:1,gy:12}, {gx:18,gy:12},
-  {gx:8,gy:10}, {gx:16,gy:10}
-];
-
-const MEETING_TABLE = {gx:3, gy:10, w:4, h:2}; // Mesa oval reunião
-const LOUNGE_SOFAS = [{gx:16,gy:6},{gx:17,gy:7}]; // Sofás coloridos
-const WHITEBOARD = {gx:10, gy:0.2}; // Quadro branco na parede
-const TV_WALL = {gx:6, gy:0.2}; // TV grande dashboard
-
-// ── ESTADO ────────────────────────────────────────────────
-let agentsData   = [];
-let activityLog  = new Set();
-let elimCount    = 0;
+let agentsData = [];
+let activityLog = new Set();
+let elimCount = 0;
 let hoveredAgent = null;
-let time         = 0;
+let time = 0;
 
-// ── TILES / PAREDES ───────────────────────────────────────
-function drawTile(gx, gy, fill) {
-  const {x,y} = iso(gx,gy), s = world2screen(x,y);
-  const hw = (TILE_W/2)*cam.zoom, hh = (TILE_H/2)*cam.zoom;
-  ctx.beginPath();
-  ctx.moveTo(s.x, s.y-hh); ctx.lineTo(s.x+hw, s.y);
-  ctx.lineTo(s.x, s.y+hh); ctx.lineTo(s.x-hw, s.y);
-  ctx.closePath();
-  ctx.fillStyle=fill; ctx.strokeStyle=C.floorDark; ctx.lineWidth=0.5;
-  ctx.fill(); ctx.stroke();
+function drawCuboid(s, dx, dy, w, d, h, top, left, right, outline = "#000") {
+  const z = cam.zoom;
+  const xw = (w * TILE_W/2) * z, yw = (d * TILE_W/2) * z;
+  const xh = (w * TILE_H/2) * z, yh = (d * TILE_H/2) * z;
+  const hh = h * z;
+  const bx = s.x + dx*z, by = s.y + dy*z;
+
+  ctx.lineWidth = 1.5; ctx.strokeStyle = outline; ctx.lineJoin = "round";
+
+  ctx.fillStyle = left; ctx.beginPath();
+  ctx.moveTo(bx, by); ctx.lineTo(bx - xw, by - xh);
+  ctx.lineTo(bx - xw, by - xh - hh); ctx.lineTo(bx, by - hh);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+
+  ctx.fillStyle = right; ctx.beginPath();
+  ctx.moveTo(bx, by); ctx.lineTo(bx + yw, by - yh);
+  ctx.lineTo(bx + yw, by - yh - hh); ctx.lineTo(bx, by - hh);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  
+  ctx.fillStyle = top; ctx.beginPath();
+  ctx.moveTo(bx, by - hh); ctx.lineTo(bx - xw, by - xh - hh);
+  ctx.lineTo(bx - xw + yw, by - xh - yh - hh); ctx.lineTo(bx + yw, by - yh - hh);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+}
+
+function drawTileBlock(gx, gy, fillTop, fillSide) {
+  const {x,y} = iso(gx, gy), s = world2screen(x,y);
+  drawCuboid(s, 0, 0, 1, 1, 8, fillTop, fillSide, shadeColor(fillSide,-30));
 }
 
 function drawWallBack(gx, gy) {
-  const {x,y}=iso(gx,gy), s=world2screen(x,y);
-  const hw=(TILE_W/2)*cam.zoom, hh=(TILE_H/2)*cam.zoom, wh=WALL_H*cam.zoom;
-  // Parede branca com sombra
-  ctx.fillStyle=C.wall;
-  ctx.strokeStyle="#ccc"; ctx.lineWidth=1;
-  ctx.beginPath();
-  ctx.moveTo(s.x-hw,s.y); ctx.lineTo(s.x,s.y-hh);
-  ctx.lineTo(s.x,s.y-hh-wh); ctx.lineTo(s.x-hw,s.y-wh);
+  const {x,y} = iso(gx, gy), s = world2screen(x,y);
+  const z = cam.zoom, w = TILE_W/2 * z, h = TILE_H/2 * z, wh = WALL_H * z;
+  ctx.fillStyle = C.wall; ctx.strokeStyle = "#000"; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(s.x-w, s.y); ctx.lineTo(s.x, s.y-h);
+  ctx.lineTo(s.x, s.y-h-wh); ctx.lineTo(s.x-w, s.y-wh);
   ctx.closePath(); ctx.fill(); ctx.stroke();
-  
-  ctx.fillStyle=C.wallShade;
-  ctx.beginPath();
-  ctx.moveTo(s.x,s.y-hh); ctx.lineTo(s.x+hw,s.y);
-  ctx.lineTo(s.x+hw,s.y-wh); ctx.lineTo(s.x,s.y-hh-wh);
+  ctx.fillStyle = C.wallDark; ctx.beginPath(); ctx.moveTo(s.x-w, s.y); ctx.lineTo(s.x, s.y-h);
+  ctx.lineTo(s.x, s.y-h-8*z); ctx.lineTo(s.x-w, s.y-8*z);
   ctx.closePath(); ctx.fill(); ctx.stroke();
 }
 
 function drawWallLeft(gx, gy) {
-  const {x,y}=iso(gx,gy), s=world2screen(x,y);
-  const hw=(TILE_W/2)*cam.zoom, hh=(TILE_H/2)*cam.zoom, wh=WALL_H*cam.zoom;
-  ctx.beginPath();
-  ctx.moveTo(s.x-hw,s.y); ctx.lineTo(s.x,s.y+hh);
-  ctx.lineTo(s.x,s.y+hh-wh); ctx.lineTo(s.x-hw,s.y-wh);
-  ctx.closePath();
-  ctx.fillStyle=C.wall; ctx.strokeStyle="#ccc"; ctx.lineWidth=1;
-  ctx.fill(); ctx.stroke();
+  const {x,y} = iso(gx, gy), s = world2screen(x,y);
+  const z = cam.zoom, w = TILE_W/2 * z, h = TILE_H/2 * z, wh = WALL_H * z;
+  ctx.fillStyle = C.wallShade; ctx.strokeStyle = "#000"; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(s.x, s.y+h); ctx.lineTo(s.x-w, s.y);
+  ctx.lineTo(s.x-w, s.y-wh); ctx.lineTo(s.x, s.y+h-wh);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = shadeColor(C.wallDark, -20); ctx.beginPath(); ctx.moveTo(s.x, s.y+h); ctx.lineTo(s.x-w, s.y);
+  ctx.lineTo(s.x-w, s.y-8*z); ctx.lineTo(s.x, s.y+h-8*z);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
 }
 
-// Janela grande na parede (skyline fictício)
-function drawWindow(gx, gy, w) {
-  const {x,y}=iso(gx,gy), s=world2screen(x,y-WALL_H*0.6);
-  const z=cam.zoom, ww=w*TILE_W*z, hh=40*z;
-  ctx.fillStyle=C.sky;
-  ctx.fillRect(s.x-ww/2, s.y-hh, ww, hh);
-  ctx.strokeStyle="#4285f480"; ctx.lineWidth=2;
-  ctx.strokeRect(s.x-ww/2, s.y-hh, ww, hh);
-  // Divisórias da janela
-  for(let i=1; i<w; i++) {
-    const px = s.x - ww/2 + (ww/w)*i;
-    ctx.beginPath(); ctx.moveTo(px, s.y-hh); ctx.lineTo(px, s.y); ctx.stroke();
-  }
-  // Skyline simples
-  ctx.fillStyle="rgba(255,255,255,0.4)";
-  const buildings = [0.6,0.8,0.5,0.9,0.6,0.7];
-  buildings.forEach((h,i)=>{
-    const bx = s.x-ww/2 + (ww/buildings.length)*i;
-    const bw = ww/buildings.length - 2*z;
-    const bh = hh*h*0.5;
-    ctx.fillRect(bx, s.y-bh, bw, bh);
-  });
-}
-
-// ── MÓVEIS ────────────────────────────────────────────────
 function drawDesk(gx, gy, idx) {
-  const {x,y}=iso(gx,gy), s=world2screen(x,y);
-  const z=cam.zoom, hw=(TILE_W/2-6)*z, hh=(TILE_H/2-3)*z, dh=18*z;
-  // topo branco
-  ctx.beginPath();
-  ctx.moveTo(s.x,s.y-dh-hh); ctx.lineTo(s.x+hw,s.y-dh);
-  ctx.lineTo(s.x,s.y-dh+hh); ctx.lineTo(s.x-hw,s.y-dh);
-  ctx.closePath();
-  ctx.fillStyle=C.desk; ctx.strokeStyle=C.deskEdge; ctx.lineWidth=1;
-  ctx.fill(); ctx.stroke();
-  // lado esq
-  ctx.beginPath();
-  ctx.moveTo(s.x-hw,s.y-dh); ctx.lineTo(s.x,s.y-dh+hh);
-  ctx.lineTo(s.x,s.y+hh); ctx.lineTo(s.x-hw,s.y);
-  ctx.closePath();
-  ctx.fillStyle=C.wallShade; ctx.fill(); ctx.stroke();
-  // lado dir
-  ctx.beginPath();
-  ctx.moveTo(s.x,s.y-dh+hh); ctx.lineTo(s.x+hw,s.y-dh);
-  ctx.lineTo(s.x+hw,s.y); ctx.lineTo(s.x,s.y+hh);
-  ctx.closePath();
-  ctx.fillStyle=C.floorDark; ctx.fill(); ctx.stroke();
+  const {x,y} = iso(gx, gy), s = world2screen(x,y);
+  const z = cam.zoom;
+  const leg = C.deskEdge;
+  drawCuboid(s, -12, -4, 0.15, 0.15, 18, leg, leg, leg);
+  drawCuboid(s, 12, -4, 0.15, 0.15, 18, leg, leg, leg);
+  drawCuboid(s, -2, -10, 0.15, 0.15, 18, leg, leg, leg);
+  drawCuboid(s, 0, -6, 0.8, 0.6, 3, C.desk, C.deskEdge, C.deskEdge);
   
-  // Monitor moderno
-  drawMonitor(s.x-4*z, s.y-dh-12*z, z, idx);
-  
-  // Teclado
-  ctx.fillStyle="#e8eaed";
-  ctx.fillRect(s.x+4*z, s.y-dh-2*z, 12*z, 4*z);
-}
-
-function drawMonitor(sx, sy, z, idx) {
-  const w=24*z, h=18*z;
-  // Moldura preta
-  ctx.fillStyle="#202124";
-  ctx.fillRect(sx-w/2, sy-h, w, h);
+  const monC = "#e6e6db", monFace = "#2d2d2a";
+  drawCuboid(s, -2, -8, 0.2, 0.2, 2, "#999", "#888", "#777");
+  drawCuboid(s, -2, -10, 0.4, 0.35, 12, monC, monFace, shadeColor(monC,-20));
   
   const agent = agentsData[idx];
-  if (agent) {
-    const bg = agent.pnl_pct >= 0 ? "#0d3d2d" : "#3d0d1d";
-    ctx.fillStyle = bg;
-    ctx.fillRect(sx-w/2+1.5*z, sy-h+1.5*z, w-3*z, h-3*z);
-    
-    // Sparkline
-    const hist = agent.history || [];
-    if (hist.length > 1) {
-      const tw=w-5*z, th=h-5*z;
-      const ox=sx-w/2+2.5*z, oy=sy-2.5*z;
-      const vals = hist.slice(-20).map(p=>p.v);
-      const minV=Math.min(...vals), maxV=Math.max(...vals);
-      const range=maxV-minV||1;
-      ctx.strokeStyle = agent.pnl_pct>=0?"#34a853":"#ea4335";
-      ctx.lineWidth=1.2;
-      ctx.beginPath();
-      vals.forEach((v,i)=>{
-        const px=ox+(i/Math.max(vals.length-1,1))*tw;
-        const py=oy-((v-minV)/range)*th;
-        i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
-      });
-      ctx.stroke();
-      
-      // RSI bar no fundo
-      if (agent.last_decision) {
-        const rsi = agent.last_decision.rsi||50;
-        const rsiW = ((w-3*z)*(rsi/100));
-        ctx.fillStyle = rsi<35?"#34a853":rsi>65?"#ea4335":"#fbbc05";
-        ctx.globalAlpha=0.35;
-        ctx.fillRect(sx-w/2+1.5*z, sy-3*z, rsiW, 1.5*z);
-        ctx.globalAlpha=1;
-      }
-    } else {
-      ctx.fillStyle="#34a85360";
-      ctx.font=`${5*z}px sans-serif`;
-      ctx.textAlign="center";
-      ctx.fillText("...", sx, sy-h/2+2*z);
-      ctx.textAlign="left";
-    }
-    
-    // LED piscando
-    const blink = REDUCE_MOTION ? 1 : (Math.sin(time*4+idx)>0?1:0.3);
-    ctx.globalAlpha=blink;
-    ctx.fillStyle=agent.pnl_pct>=0?"#34a853":"#ea4335";
+  if(agent) {
+    const glCol = agent.pnl_pct >= 0 ? "#10B981" : "#F43F5E";
+    ctx.fillStyle = (Math.sin(time*2+idx)>0) ? glCol : shadeColor(glCol,-50);
     ctx.beginPath();
-    ctx.arc(sx+w/2-3*z, sy-h+3*z, 2*z, 0, Math.PI*2);
-    ctx.fill();
-    ctx.globalAlpha=1;
-  } else {
-    ctx.fillStyle="#000";
-    ctx.fillRect(sx-w/2+1.5*z, sy-h+1.5*z, w-3*z, h-3*z);
-  }
-  // Pé
-  ctx.fillStyle="#333";
-  ctx.fillRect(sx-1.5*z, sy, 3*z, 5*z);
-}
-
-function drawChair(gx, gy, color) {
-  const {x,y}=iso(gx-0.4,gy+0.6), s=world2screen(x,y), z=cam.zoom;
-  // Assento colorido estilo ergonômico
-  ctx.fillStyle=color; ctx.strokeStyle="#333"; ctx.lineWidth=0.5;
-  ctx.beginPath(); ctx.arc(s.x,s.y,9*z,0,Math.PI*2); ctx.fill(); ctx.stroke();
-  // Encosto
-  ctx.fillRect(s.x-5*z, s.y-20*z, 10*z, 12*z);
-  ctx.strokeRect(s.x-5*z, s.y-20*z, 10*z, 12*z);
-}
-
-function drawPlant(gx, gy) {
-  const {x,y}=iso(gx,gy), s=world2screen(x,y), z=cam.zoom;
-  // Vaso branco moderno
-  ctx.fillStyle="#fff";
-  ctx.strokeStyle="#dadce0"; ctx.lineWidth=1;
-  ctx.beginPath();
-  ctx.moveTo(s.x-7*z,s.y); ctx.lineTo(s.x+7*z,s.y);
-  ctx.lineTo(s.x+5*z,s.y+11*z); ctx.lineTo(s.x-5*z,s.y+11*z);
-  ctx.closePath(); ctx.fill(); ctx.stroke();
-  
-  // Folhas tropicais grandes
-  [[0,-1.2],[-.7,-.6],[.7,-.6],[-.5,-.2],[.5,-.2]].forEach(([dx,dy])=>{
-    ctx.fillStyle=dx===0?C.plant:C.plantDark;
-    ctx.beginPath();
-    ctx.ellipse(s.x+dx*12*z,s.y+dy*16*z,9*z,13*z,dx*0.6,0,Math.PI*2);
-    ctx.fill();
-  });
-}
-
-// Mesa de reunião oval
-function drawMeetingTable() {
-  const {gx,gy,w,h} = MEETING_TABLE;
-  const {x,y} = iso(gx+w/2, gy+h/2), s = world2screen(x,y);
-  const z = cam.zoom, rw=(w*TILE_W/2)*z, rh=(h*TILE_H/2)*z;
-  
-  ctx.fillStyle="#fff";
-  ctx.strokeStyle=C.deskEdge; ctx.lineWidth=1.5;
-  ctx.beginPath();
-  ctx.ellipse(s.x, s.y-10*z, rw, rh, 0, 0, Math.PI*2);
-  ctx.fill(); ctx.stroke();
-  
-  // Cadeiras ao redor
-  const chairs = 6;
-  for(let i=0; i<chairs; i++) {
-    const angle = (i/chairs)*Math.PI*2;
-    const cx = s.x + Math.cos(angle)*(rw+8*z);
-    const cy = s.y-10*z + Math.sin(angle)*(rh+6*z);
-    ctx.fillStyle=C.clothes[i%C.clothes.length];
-    ctx.beginPath(); ctx.arc(cx,cy,7*z,0,Math.PI*2); ctx.fill();
+    const wx = (0.4 * TILE_W/2) * z, hy = (0.4 * TILE_H/2) * z, by = s.y - 12*z;
+    ctx.moveTo(s.x-2*z-2, by); ctx.lineTo(s.x-2*z - wx + 2, by - hy);
+    ctx.lineTo(s.x-2*z - wx + 2, by - hy - 9*z); ctx.lineTo(s.x-2*z-2, by - 9*z);
+    ctx.closePath(); ctx.fill();
+    drawCuboid(s, 10, -6, 0.3, 0.15, 1, "#ddd", "#ccc", "#aaa");
   }
 }
 
-// Sofás lounge coloridos
-function drawSofa(gx, gy, color) {
-  const {x,y}=iso(gx,gy), s=world2screen(x,y), z=cam.zoom;
-  ctx.fillStyle=color;
-  ctx.fillRect(s.x-16*z, s.y-8*z, 32*z, 16*z);
-  ctx.fillRect(s.x-16*z, s.y-18*z, 32*z, 10*z); // Encosto
-  ctx.strokeStyle="#333"; ctx.lineWidth=1;
-  ctx.strokeRect(s.x-16*z, s.y-8*z, 32*z, 16*z);
-  ctx.strokeRect(s.x-16*z, s.y-18*z, 32*z, 10*z);
-}
-
-// Whiteboard na parede
-function drawWhiteboard() {
-  const {gx,gy} = WHITEBOARD;
-  const {x,y}=iso(gx,gy), s=world2screen(x,y-WALL_H*0.5);
-  const z=cam.zoom, w=70*z, h=40*z;
-  
-  ctx.fillStyle="#fff";
-  ctx.strokeStyle="#4285f4"; ctx.lineWidth=2;
-  ctx.fillRect(s.x-w/2, s.y-h, w, h);
-  ctx.strokeRect(s.x-w/2, s.y-h, w, h);
-  
-  // Gráfico desenhado (placeholder)
-  ctx.strokeStyle="#ea4335"; ctx.lineWidth=1.5;
-  ctx.beginPath();
-  const pts = [0.3,0.5,0.4,0.7,0.6,0.8];
-  pts.forEach((py,i)=>{
-    const px = s.x-w/2+10*z + (w-20*z)*(i/(pts.length-1));
-    const wy = s.y-h+10*z + (h-20*z)*py;
-    i===0?ctx.moveTo(px,wy):ctx.lineTo(px,wy);
-  });
-  ctx.stroke();
-  
-  ctx.fillStyle="#4285f4"; ctx.font=`bold ${6*z}px sans-serif`;
-  ctx.textAlign="center";
-  ctx.fillText("Performance", s.x, s.y-h+8*z);
-  ctx.textAlign="left";
-}
-
-// TV Dashboard na parede
-function drawTVDashboard() {
-  const {gx,gy} = TV_WALL;
-  const {x,y}=iso(gx,gy), s=world2screen(x,y-WALL_H*0.6);
-  const z=cam.zoom, w=90*z, h=50*z;
-  
-  ctx.fillStyle="#000";
-  ctx.strokeStyle="#4285f4"; ctx.lineWidth=2.5;
-  ctx.fillRect(s.x-w/2,s.y-h,w,h);
-  ctx.strokeRect(s.x-w/2,s.y-h,w,h);
-  
-  ctx.fillStyle="#001a00";
-  ctx.fillRect(s.x-w/2+3*z,s.y-h+3*z,w-6*z,h-6*z);
-  
-  ctx.fillStyle="#34a853"; ctx.font=`bold ${7*z}px sans-serif`;
-  ctx.textAlign="center";
-  ctx.fillText("📊 TRADING OFFICE", s.x, s.y-h+12*z);
-  
-  const best=agentsData[0];
-  if (best) {
-    const col=best.pnl_pct>=0?"#34a853":"#ea4335";
-    ctx.fillStyle=col; ctx.font=`${6*z}px sans-serif`;
-    ctx.fillText(`👑 ${best.emoji} ${best.name}`, s.x, s.y-h+24*z);
-    ctx.fillText(`$${best.value.toFixed(2)}  ${best.pnl_pct>=0?"+":""}${best.pnl_pct.toFixed(1)}%`, s.x, s.y-h+35*z);
-    ctx.font=`${5*z}px sans-serif`;
-    ctx.fillStyle="#888";
-    ctx.fillText(`fee $${(best.total_fees||0).toFixed(3)} · ${best.total_trades||0} trades`, s.x, s.y-h+44*z);
-  }
-  ctx.textAlign="left";
-}
-
-// ── PERSONAGEM HUMANOIDE ──────────────────────────────────
 function drawHumanoid(gx, gy, agent, idx) {
-  const bobY = REDUCE_MOTION ? 0 : Math.sin(time*1.8+idx*1.3)*1.5;
-  const {x,y}=iso(gx,gy), s=world2screen(x,y+bobY);
-  const z=cam.zoom;
-  const clothColor = C.clothes[idx%C.clothes.length];
-  const skinColor = C.skin;
-  const hairColor = C.hair[idx%C.hair.length];
+  const bob = (Math.sin(time * 3 + idx) > 0) ? -1 : 0;
+  const isTyping = agent.last_decision != null;
+  const typeBob = isTyping ? (Math.sin(time*15+idx)>0? 1.5 : 0) : 0;
   
-  // Sombra
-  ctx.fillStyle="rgba(0,0,0,0.15)";
-  ctx.beginPath(); ctx.ellipse(s.x,s.y+3*z,10*z,4*z,0,0,Math.PI*2); ctx.fill();
+  let {x,y} = iso(gx - 0.4, gy - 0.4);
+  const s = world2screen(x, y + bob);
+  const z = cam.zoom;
   
-  // Estado de animação
-  let armAngle = REDUCE_MOTION ? 0 : Math.sin(time*2+idx)*0.2;
-  let headTilt = 0;
-  let expression = "neutral"; // neutral, happy, worried
+  const skin = C.skin[idx % C.skin.length], cloth = C.clothes[idx % C.clothes.length], hair = C.hair[idx % C.hair.length];
   
-  if (agent.last_decision) {
-    const dec = agent.last_decision;
-    if (dec.side === "BUY") {
-      armAngle = -0.6; // Polegar pra cima
-      expression = "happy";
-    } else if (dec.side === "SELL") {
-      headTilt = 0.15;
-      expression = "worried";
-    }
-  }
+  drawCuboid(s, -6, -2, 0.3, 0.3, 10, "#333", "#222", "#111"); 
+  drawCuboid(s, -6, -3, 0.4, 0.4, 2, cloth, shadeColor(cloth,-20), shadeColor(cloth,-40)); 
+  drawCuboid(s, -6, -6, 0.35, 0.35, 11, cloth, shadeColor(cloth,-10), shadeColor(cloth,-20));
   
-  if (agent.pnl_pct > 5) {
-    // Comemorando: em pé, braços levantados
-    armAngle = -0.8;
-    expression = "happy";
-  } else if (agent.pnl_pct < -5) {
-    // Desanimado: curvado, cabeça baixa
-    headTilt = 0.3;
-    expression = "worried";
-  }
+  drawCuboid(s, -1, -6 + typeBob, 0.15, 0.3, 8, cloth, shadeColor(cloth,-10), shadeColor(cloth,-20));
+  drawCuboid(s, -11, -8 - typeBob, 0.15, 0.3, 8, cloth, shadeColor(cloth,-10), shadeColor(cloth,-20));
+  drawCuboid(s, 0, -5 + typeBob, 0.12, 0.15, 2, skin, skin, shadeColor(skin,-20));
+  drawCuboid(s, -10, -7 - typeBob, 0.12, 0.15, 2, skin, skin, shadeColor(skin,-20));
+
+  drawCuboid(s, -6, -18, 0.45, 0.45, 9, skin, shadeColor(skin,-5), shadeColor(skin,-15));
+  drawCuboid(s, -6, -27, 0.5, 0.5, 3, hair, shadeColor(hair,-10), shadeColor(hair,-20));
+  drawCuboid(s, -11, -24, 0.15, 0.5, 4, hair, shadeColor(hair,-10), shadeColor(hair,-20));
   
-  // ── PERNAS ──
-  ctx.fillStyle="#2c2c2c";
-  ctx.fillRect(s.x-7*z, s.y+1*z, 5*z, 9*z); // esq
-  ctx.fillRect(s.x+2*z, s.y+1*z, 5*z, 9*z); // dir
+  ctx.fillStyle = "#fff";
+  const hx = s.x - 6*z, hy = s.y - 23*z;
+  ctx.beginPath(); ctx.arc(hx - 2*z, hy, 1.5*z, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.arc(hx - 8*z, hy - 3*z, 1.5*z, 0, 7); ctx.fill();
   
-  // ── CORPO (blazer colorido) ──
-  const grad = ctx.createLinearGradient(s.x-10*z,s.y-18*z,s.x+10*z,s.y+1*z);
-  grad.addColorStop(0, clothColor);
-  grad.addColorStop(1, shadeColor(clothColor,-30));
-  ctx.fillStyle=grad;
-  ctx.strokeStyle="#000"; ctx.lineWidth=1;
-  ctx.beginPath();
-  ctx.roundRect(s.x-10*z, s.y-18*z, 20*z, 20*z, 3*z);
-  ctx.fill(); ctx.stroke();
+  const mood = agent.pnl_pct >= 0 ? "#10B981" : "#F43F5E";
+  ctx.fillStyle = mood;
+  ctx.beginPath(); ctx.arc(hx - 2*z, hy, 0.8*z, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.arc(hx - 8*z, hy - 3*z, 0.8*z, 0, 7); ctx.fill();
   
-  // Crachá na lapela
-  ctx.fillStyle="#fff";
-  ctx.fillRect(s.x+6*z, s.y-14*z, 3*z, 4*z);
-  ctx.fillStyle=clothColor; ctx.font=`${3*z}px sans-serif`; ctx.textAlign="center";
-  ctx.fillText(agent.emoji, s.x+7.5*z, s.y-10.5*z);
-  ctx.textAlign="left";
-  
-  // ── BRAÇOS ──
-  const armL = REDUCE_MOTION ? 0 : Math.sin(time*2+idx)*6*z;
-  const armR = REDUCE_MOTION ? 0 : Math.cos(time*2+idx)*6*z;
-  
-  // Braço esquerdo
-  ctx.strokeStyle=clothColor; ctx.lineWidth=5*z; ctx.lineCap="round";
-  ctx.beginPath();
-  ctx.moveTo(s.x-10*z, s.y-14*z);
-  ctx.lineTo(s.x-16*z, s.y-8*z+armL+armAngle*10*z);
+  ctx.strokeStyle = "#000"; ctx.lineWidth = 1; ctx.beginPath();
+  if (agent.pnl_pct >= 5) { ctx.moveTo(hx - 3*z, hy + 3*z); ctx.lineTo(hx - 7*z, hy + 1*z); }
+  else if (agent.pnl_pct <= -5) { ctx.moveTo(hx - 3*z, hy + 2*z); ctx.lineTo(hx - 7*z, hy + 4*z); }
+  else { ctx.moveTo(hx - 3*z, hy + 3*z); }
   ctx.stroke();
-  // Mão
-  ctx.fillStyle=skinColor;
-  ctx.beginPath(); ctx.arc(s.x-16*z, s.y-8*z+armL+armAngle*10*z, 3*z, 0, Math.PI*2); ctx.fill();
-  
-  // Braço direito
-  ctx.strokeStyle=clothColor;
-  ctx.beginPath();
-  ctx.moveTo(s.x+10*z, s.y-14*z);
-  ctx.lineTo(s.x+16*z, s.y-8*z+armR-armAngle*10*z);
-  ctx.stroke();
-  // Mão
-  ctx.fillStyle=skinColor;
-  ctx.beginPath(); ctx.arc(s.x+16*z, s.y-8*z+armR-armAngle*10*z, 3*z, 0, Math.PI*2); ctx.fill();
-  
-  // ── PESCOÇO ──
-  ctx.fillStyle=skinColor;
-  ctx.fillRect(s.x-3*z, s.y-20*z, 6*z, 4*z);
-  
-  // ── CABEÇA ──
-  ctx.save();
-  ctx.translate(s.x, s.y-26*z);
-  ctx.rotate(headTilt);
-  
-  // Rosto oval
-  const headGrad = ctx.createRadialGradient(0,-2*z,0, 0,-2*z,10*z);
-  headGrad.addColorStop(0, skinColor);
-  headGrad.addColorStop(1, shadeColor(skinColor,-15));
-  ctx.fillStyle=headGrad;
-  ctx.strokeStyle="#000"; ctx.lineWidth=1;
-  ctx.beginPath();
-  ctx.ellipse(0, -2*z, 8*z, 10*z, 0, 0, Math.PI*2);
-  ctx.fill(); ctx.stroke();
-  
-  // Cabelo estilizado
-  ctx.fillStyle=hairColor;
-  ctx.beginPath();
-  ctx.ellipse(0, -8*z, 8*z, 6*z, 0, 0, Math.PI, true);
-  ctx.fill();
-  
-  // ── ROSTO ──
-  // Olhos
-  const eyeY = expression==="worried" ? 0*z : -1*z;
-  ctx.fillStyle="#fff";
-  ctx.beginPath(); ctx.arc(-3*z, eyeY, 2.5*z, 0, Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.arc(3*z, eyeY, 2.5*z, 0, Math.PI*2); ctx.fill();
-  
-  // Pupilas
-  const pupilCol = agent.pnl_pct>=0 ? "#34a853" : "#ea4335";
-  ctx.fillStyle=pupilCol;
-  ctx.beginPath(); ctx.arc(-3*z, eyeY, 1.2*z, 0, Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.arc(3*z, eyeY, 1.2*z, 0, Math.PI*2); ctx.fill();
-  
-  // Boca
-  ctx.strokeStyle="#000"; ctx.lineWidth=0.8; ctx.lineCap="round";
-  ctx.beginPath();
-  if (expression === "happy") {
-    // Sorriso
-    ctx.arc(0, 3*z, 4*z, 0.2, Math.PI-0.2);
-  } else if (expression === "worried") {
-    // Triste
-    ctx.arc(0, 7*z, 4*z, Math.PI+0.2, -0.2, true);
-  } else {
-    // Neutro
-    ctx.moveTo(-3*z, 4*z); ctx.lineTo(3*z, 4*z);
-  }
-  ctx.stroke();
-  
-  ctx.restore();
-  
-  // Badge geração
-  const gen=agent.generation||1;
-  if (gen>1) {
-    ctx.fillStyle=gen===2?"#a855f7":gen===3?"#fbbc05":"#10b981";
-    ctx.beginPath(); ctx.arc(s.x+10*z,s.y-30*z,6*z,0,Math.PI*2); ctx.fill();
-    ctx.fillStyle="#fff"; ctx.font=`bold ${5*z}px sans-serif`; ctx.textAlign="center";
-    ctx.fillText("G"+gen,s.x+10*z,s.y-27*z);
-    ctx.textAlign="left";
-  }
-  
-  // ── TEXTO DE DECISÃO ACIMA ────────────────────────────
+
   drawDecisionBubble(s, z, agent, idx);
   
-  // ── TOOLTIP ao hover ──────────────────────────────────
-  if (isHovered(s,16*z,48*z)) {
-    hoveredAgent=agent;
+  // Hit test para o tooltip adaptado para Habbo (área mais retangular em cima do boneco)
+  if (mouse.cx>s.x-15*z && mouse.cx<s.x+15*z && mouse.cy>s.y-35*z && mouse.cy<s.y) {
+    hoveredAgent = agent;
     showTooltip(agent);
   }
 }
 
-// ── BALÃO DE DECISÃO COM SPARKLINE ───────────────────────
 function drawDecisionBubble(s, z, agent, idx) {
   if (z < 0.6) return;
-  
   const dec = agent.last_decision;
-  const lastTrade = agent.trades && agent.trades[0];
-  
-  let reasonText = null;
-  if (dec && dec.reason) {
-    reasonText = `${dec.side==="BUY"?"▲":"▼"} ${dec.symbol||""}: ${dec.reason}`;
-  } else if (lastTrade) {
-    reasonText = `${lastTrade.side} ${lastTrade.symbol} @ $${Number(lastTrade.price).toFixed(2)}`;
-  }
-  
-  // Indicadores em pills coloridos
-  let indPills = [];
-  if (dec) {
-    const rsi = (dec.indicators?.rsi || 0)||0;
-    const rsiCol = rsi<35?"#34a853":rsi>65?"#ea4335":"#fbbc05";
-    indPills.push({text:`RSI ${rsi.toFixed(0)}`, col:rsiCol});
-    
-    if ((dec.indicators?.momentum || 0)) {
-      const mCol = (dec.indicators?.momentum || 0)>=0?"#34a853":"#ea4335";
-      indPills.push({text:`M${(dec.indicators?.momentum || 0)>=0?"+":""}${(dec.indicators?.momentum || 0).toFixed(1)}%`, col:mCol});
-    }
-    if ((dec.indicators?.zscore || 0)) {
-      indPills.push({text:`Z${(dec.indicators?.zscore || 0).toFixed(1)}σ`, col:"#4285f4"});
-    }
-  }
-  
-  // Knowledge share
-  let shareText = null;
-  if (dec && (dec.shared_buy>0||dec.shared_sell>0)) {
-    shareText = `🔗 ${dec.shared_buy} buy · ${dec.shared_sell} sell`;
-  }
-  
-  if (!reasonText && indPills.length===0) return;
-  
-  const lineH = 9*z;
-  const lines = [reasonText, ...indPills.map(p=>p.text), shareText].filter(Boolean);
-  const totalH = lines.length * lineH + 10*z;
-  
-  ctx.font = `${6*z}px sans-serif`;
-  const maxW = Math.max(...lines.map(l => ctx.measureText(l).width));
-  const boxW = maxW + 16*z;
-  
-  const bx = s.x - boxW/2;
-  const by = s.y - 50*z - totalH;
-  
-  // Fundo glassmorphism
-  const borderCol = dec && dec.side==="BUY" ? "#34a853" : dec && dec.side==="SELL" ? "#ea4335" : "#4285f4";
-  ctx.fillStyle = "rgba(17,24,39,0.92)";
-  ctx.strokeStyle = borderCol;
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.roundRect(bx, by, boxW, totalH, 8*z);
-  ctx.fill();
-  ctx.stroke();
-  
-  // Seta apontando
-  ctx.fillStyle = borderCol;
-  ctx.beginPath();
-  ctx.moveTo(s.x-4*z, by+totalH); ctx.lineTo(s.x+4*z, by+totalH); ctx.lineTo(s.x, by+totalH+6*z);
-  ctx.closePath(); ctx.fill();
-  
-  // Textos
-  ctx.font = `bold ${6.5*z}px sans-serif`;
-  ctx.textAlign = "center";
-  let yOff = by + lineH;
-  
-  // Linha 1: razão principal
-  if (reasonText) {
-    ctx.fillStyle = borderCol;
-    ctx.fillText(reasonText, s.x, yOff);
-    yOff += lineH;
-  }
-  
-  // Indicators como pills
-  indPills.forEach(pill => {
-    ctx.fillStyle = pill.col;
-    ctx.font = `${5.5*z}px sans-serif`;
-    ctx.fillText(pill.text, s.x, yOff);
-    yOff += lineH*0.8;
-  });
-  
-  // Knowledge share
-  if (shareText) {
-    ctx.fillStyle = "#a855f7";
-    ctx.font = `${5*z}px sans-serif`;
-    ctx.fillText(shareText, s.x, yOff);
-  }
-  
-  ctx.textAlign = "left";
-  
-  // Mini sparkline no fundo do balão
-  if (dec && agent.history && agent.history.length > 3) {
-    const chartY = by + totalH - 2*z;
-    const chartH = 10*z;
-    const chartW = boxW - 8*z;
-    const chartX = bx + 4*z;
-    
-    ctx.fillStyle = "rgba(0,0,0,0.3)";
-    ctx.fillRect(chartX, chartY-chartH, chartW, chartH);
-    
-    const vals = agent.history.slice(-15).map(h=>h.v);
-    const mn=Math.min(...vals), mx=Math.max(...vals), rng=mx-mn||0.01;
-    ctx.strokeStyle = borderCol; ctx.lineWidth=1.2;
-    ctx.beginPath();
-    vals.forEach((v,i)=>{
-      const px=chartX+i/(vals.length-1)*chartW;
-      const py=chartY-((v-mn)/rng)*chartH;
-      i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
-    });
-    ctx.stroke();
-  }
+  if (!dec) return;
+  let txt = `${dec.side==="BUY"?"▲":"▼"} ${dec.symbol}`;
+  const floatY = (Math.sin(time*2+idx)*4) * z;
+  ctx.font = `bold ${5*z}px 'JetBrains Mono', monospace`;
+  const w = ctx.measureText(txt).width + 12*z;
+  const bx = s.x - w/2, by = s.y - 45*z + floatY;
+  ctx.fillStyle = "#fff"; ctx.strokeStyle = "#000"; ctx.lineWidth = 1.5; ctx.beginPath();
+  ctx.rect(bx, by, w, 10*z); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(s.x-2*z, by+10*z); ctx.lineTo(s.x+2*z, by+10*z); ctx.lineTo(s.x, by+14*z);
+  ctx.fill(); ctx.stroke();
+  ctx.fillStyle = dec.side==="BUY" ? "#10B981" : "#F43F5E";
+  ctx.textAlign = "center"; ctx.fillText(txt, s.x, by + 7*z); ctx.textAlign = "left";
+}
+
+function drawDecor() {
+  const z = cam.zoom, {x, y} = iso(5, 0), s = world2screen(x,y);
+  drawCuboid(s, 0, -40, 4, 0.4, 25, "#222", "#111", "#080808");
+  ctx.fillStyle = "#0c1813"; ctx.beginPath();
+  const wx = (3.8 * TILE_W/2) * z, hy = (3.8 * TILE_H/2) * z, by = s.y - 42*z;
+  ctx.moveTo(s.x-2*z, by); ctx.lineTo(s.x-2*z - wx, by - hy);
+  ctx.lineTo(s.x-2*z - wx, by - hy - 21*z); ctx.lineTo(s.x-2*z, by - 21*z); ctx.fill();
+  ctx.fillStyle = "#10B981"; ctx.font = `bold ${6*z}px 'JetBrains Mono', monospace`;
+  ctx.fillText("CRYPTO TRADING RPG", s.x - wx + 10*z, by - hy - 8*z);
+}
+
+function shadeColor(hex, p) {
+    let R = parseInt(hex.substring(1,3),16), G = parseInt(hex.substring(3,5),16), B = parseInt(hex.substring(5,7),16);
+    R = parseInt(R * (100 + p) / 100); G = parseInt(G * (100 + p) / 100); B = parseInt(B * (100 + p) / 100);
+    R=(R<255)?(R>0?R:0):255; G=(G<255)?(G>0?G:0):255; B=(B<255)?(B>0?B:0):255;
+    const RR = ((R.toString(16).length==1)?"0"+R.toString(16):R.toString(16));
+    const GG = ((G.toString(16).length==1)?"0"+G.toString(16):G.toString(16));
+    const BB = ((B.toString(16).length==1)?"0"+B.toString(16):B.toString(16));
+    return "#"+RR+GG+BB;
 }
 
 function strategyLabel(agent) {
@@ -911,56 +490,31 @@ function renderOffice() {
   hoveredAgent = null;
   ctx.clearRect(0,0,canvas.width,canvas.height);
   
-  // Fundo gradiente
-  const grad = ctx.createRadialGradient(canvas.width*0.4, canvas.height*0.2, 0, canvas.width*0.5, canvas.height*0.5, canvas.height);
-  grad.addColorStop(0, "#1a237e");
-  grad.addColorStop(1, "#0a0e1a");
-  ctx.fillStyle = grad;
+  ctx.fillStyle = "#1a1e24";
   ctx.fillRect(0,0,canvas.width,canvas.height);
   
-  // Paredes de fundo
-  for(let gx=0;gx<ROOM_W;gx++) drawWallBack(gx,0);
-  for(let gy=0;gy<ROOM_H;gy++) drawWallLeft(0,gy);
+  for(let gx=0; gx<ROOM_W; gx++) drawWallBack(gx,0);
+  for(let gy=0; gy<ROOM_H; gy++) drawWallLeft(0,gy);
   
-  // Janelas
-  drawWindow(4, 0, 4);
-  drawWindow(12, 0, 3);
-  
-  // Piso (hexagonal colorido por zona)
-  for(let gy=0;gy<ROOM_H;gy++) {
-    for(let gx=0;gx<ROOM_W;gx++) {
-      let fill = (gx+gy)%2===0 ? C.floor1 : C.floor2;
-      // Zona de reunião com carpete azulado
-      if (gx>=2 && gx<=6 && gy>=9 && gy<=12) {
-        fill = "#e3f2fd";
-      }
-      // Zona lounge com carpete verde
-      if (gx>=15 && gx<=18 && gy>=5 && gy<=9) {
-        fill = "#e8f5e9";
-      }
-      drawTile(gx,gy,fill);
+  for(let gy=0; gy<ROOM_H; gy++) {
+    for(let gx=0; gx<ROOM_W; gx++) {
+      const isLounge = (gx>=11 && gx<=14 && gy>=4 && gy<=9);
+      let fillTop = (gx+gy)%2 === 0 ? C.floor1 : C.floor2;
+      if (isLounge) fillTop = (gx+gy)%2===0 ? C.floorWood1 : C.floorWood2;
+      drawTileBlock(gx, gy, fillTop, C.floorBlock);
     }
   }
   
-  // Decoração
-  drawTVDashboard();
-  drawWhiteboard();
-  PLANTS.forEach(p=>drawPlant(p.gx,p.gy));
-  drawMeetingTable();
-  LOUNGE_SOFAS.forEach((sf,i)=>drawSofa(sf.gx,sf.gy,C.clothes[(i+5)%C.clothes.length]));
+  drawDecor();
   
-  // Ordenar objetos por profundidade ISO
-  const sorted=[...DESKS].map((d,i)=>({...d,i})).sort((a,b)=>(a.gx+a.gy)-(b.gx+b.gy));
-  
-  sorted.forEach(({gx,gy,i})=>{
-    const chairColor = C.clothes[i%C.clothes.length];
-    drawChair(gx,gy,chairColor);
-    drawDesk(gx,gy,i);
-    if(agentsData[i]) drawHumanoid(gx-0.5,gy-0.5,agentsData[i],i);
+  const sorted = [...DESKS].map((d,i)=>({...d,i})).sort((a,b)=>(a.gx+a.gy)-(b.gx+b.gy));
+  sorted.forEach(({gx, gy, i})=>{
+    drawDesk(gx, gy, i);
+    if(agentsData[i]) drawHumanoid(gx, gy, agentsData[i], i);
   });
   
-  time+=0.016;
-  if (!hoveredAgent) tooltip.classList.remove("show");
+  time += 0.02;
+  if (!hoveredAgent && typeof tooltip !== 'undefined') tooltip.classList.remove("show");
 }
 
 // ── MODAL ─────────────────────────────────────────────────
