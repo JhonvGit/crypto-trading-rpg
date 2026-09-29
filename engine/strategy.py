@@ -84,11 +84,18 @@ def resolve_strategy(agent: dict) -> str:
     return "adaptive"
 
 
+import math
+
 def merge_genes(strategy: str, genes: Optional[dict]) -> dict:
     base = dict(DEFAULT_GENES.get(strategy, DEFAULT_GENES["adaptive"]))
     if isinstance(genes, dict):
         for k, v in genes.items():
-            if k in base and isinstance(v, (int, float)):
+            if k in base and isinstance(v, (int, float)) and not isinstance(v, bool):
+                if not math.isfinite(v):
+                    continue
+                v = max(0, v) # Prevents negative thresholds
+                if "period" in k:
+                    v = max(2, min(500, int(v))) # reasonable periods
                 base[k] = v
     return base
 
