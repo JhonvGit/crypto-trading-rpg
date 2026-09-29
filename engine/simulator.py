@@ -22,7 +22,11 @@ async def execute_trade(agent_id: str, symbol: str, side: str,
     limits   = SYMBOL_LIMITS.get(symbol, {})
     fee_rate = FEE_TAKER  # taker para market orders (simplificação)
 
+    if qty <= 0 or price <= 0 or math.isnan(qty) or math.isnan(price) or math.isinf(qty) or math.isinf(price):
+        return {"ok": False, "pnl": 0, "fee": 0, "notional": 0, "reason": "qty/price invalid"}
+
     async with get_db() as db:
+        await db.execute('BEGIN IMMEDIATE')
         row = await (await db.execute(
             "SELECT balance_usd, generation FROM agents WHERE id=? AND status='active'",
             (agent_id,)
@@ -142,6 +146,7 @@ async def execute_trade(agent_id: str, symbol: str, side: str,
 async def portfolio_value(agent_id: str, prices: dict[str, float]) -> float:
     """Cash + mark-to-market de posições abertas."""
     async with get_db() as db:
+        await db.execute('BEGIN IMMEDIATE')
         row = await (await db.execute(
             "SELECT balance_usd FROM agents WHERE id=?", (agent_id,)
         )).fetchone()

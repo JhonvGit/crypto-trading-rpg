@@ -152,7 +152,8 @@ async def check_bankruptcies_and_evolve(prices: dict, all_agents=None):
         scored = []
         for agent in agents:
             val = await portfolio_value(agent["id"], prices)
-            scored.append((agent, val))
+            if val is not None:
+                scored.append((agent, val))
 
         bankrupts = [(a, v) for a, v in scored if v <= 1.0]
         survivors = [(a, v) for a, v in scored if v > 1.0]
@@ -208,7 +209,9 @@ async def check_bankruptcies_and_evolve(prices: dict, all_agents=None):
                         symbols = filtered
                 insights = str(jev.get("key_insights") or insights)
 
-            new_id = f"gen{gen}_{bankrupt['id'][:12]}_c1"
+            import uuid
+            new_uuid = uuid.uuid4().hex[:8]
+            new_id = f"gen{gen}_{bankrupt['id'][:12]}_{new_uuid}"
             new_name = generate_name(p1.get("name", "P1"), p2.get("name", "P2"), 0)
             klass = p1.get("class") if strategy == p1["strategy"] else p2.get("class")
             emoji = random.choice(["🤖", "🦾", "🧠", "⚙️", "🔮", "💎", "⚡", "🎯", "🚀", "🔥"])

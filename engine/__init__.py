@@ -204,7 +204,8 @@ async def _main_loop():
             await asyncio.gather(*[_agent_cycle(a, prices) for a in agents], return_exceptions=True)
             for agent in agents:
                 val = await portfolio_value(agent["id"], prices)
-                await save_snapshot(agent["id"], val)
+                if val is not None:
+                    await save_snapshot(agent["id"], val)
             if cycle % 12 == 0:
                 try:
                     from engine.evolution import check_bankruptcies_and_evolve

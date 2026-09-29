@@ -70,13 +70,17 @@ _DEFAULT_LIMITS = {
 }
 
 
+from decimal import Decimal, ROUND_DOWN
+
 def _round_step(qty: float, step: float) -> float:
     """Arredonda qty para múltiplo de step_size (para baixo)."""
     if step <= 0:
         return qty
-    precision = max(0, round(-math.log10(step)))
-    factor    = 10 ** precision
-    return math.floor(qty * factor) / factor
+    q_d = Decimal(str(qty))
+    s_d = Decimal(str(step))
+    # Para arredondar num step arbitrário (ex: 100000 ou 0.05) para baixo:
+    stepped = (q_d // s_d) * s_d
+    return float(stepped)
 
 
 def validate_order(symbol: str, qty: float, price: float) -> tuple[float, Optional[str]]:
