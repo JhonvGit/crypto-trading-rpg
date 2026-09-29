@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>💼 Trading Office — Escritório de Investimentos</title>
+<link rel="stylesheet" href="/static/office.css">
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <h1>💼 Trading Office</h1>
+    <p class="subtitle">Escritório de Investimentos · 5 Robôs Traders · $100 cada</p>
+    <p id="status">🔄 Conectando...</p>
+  </div>
+</header>
+
+<main>
+
+  <!-- ISOMETRIC OFFICE ROOM -->
+  <section class="office-container">
+    <div class="office-header">
+      <h2>📊 Trading Floor</h2>
+      <div class="time-display" id="time-display">09:00 AM</div>
+    </div>
+    
+    <div class="office-room" id="office-room">
+      <!-- Canvas isométrico será renderizado aqui -->
+      <canvas id="office-canvas" width="1200" height="700"></canvas>
+      
+      <!-- Overlay para informações ao hover -->
+      <div id="trader-tooltip" class="trader-tooltip"></div>
+    </div>
+
+    <!-- Controles de câmera/zoom -->
+    <div class="office-controls">
+      <button class="control-btn" id="zoom-in">🔍+</button>
+      <button class="control-btn" id="zoom-out">🔍−</button>
+      <button class="control-btn" id="view-reset">↻</button>
+    </div>
+  </section>
+
+  <!-- DASHBOARD LATERAL -->
+  <section class="dashboard-panel">
+    
+    <!-- Ranking -->
+    <div class="panel-section">
+      <h3>🏆 Ranking</h3>
+      <div id="ranking-list" class="ranking-list"></div>
+    </div>
+
+    <!-- Ticker de atividades -->
+    <div class="panel-section">
+      <h3>📡 Atividade ao Vivo</h3>
+      <div id="activity-feed" class="activity-feed"></div>
+    </div>
+
+    <!-- Mini gráfico -->
+    <div class="panel-section">
+      <h3>📈 Performance</h3>
+      <canvas id="mini-chart" width="320" height="180"></canvas>
+    </div>
+
+  </section>
+
+</main>
+
+<footer>
+  <p>Simulação com capital fictício · Dados reais Binance · Clique nos robôs para ver detalhes</p>
+</footer>
+
+<script src="/static/office.js"></script>
+</body>
+</html>

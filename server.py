@@ -46,6 +46,7 @@ async def get_agents_data() -> list[dict]:
                 "name": row["name"],
                 "class": row["class"],
                 "emoji": row["emoji"],
+                "generation": row.get("generation", 1),
                 "balance": round(row["balance_usd"], 4),
                 "value": round(val, 4),
                 "pnl_pct": round((val / 100.0 - 1) * 100, 2),
@@ -86,10 +87,12 @@ async def lifespan(app: FastAPI):
     await init_db()
     async with get_db() as db:
         for agent in ALL_AGENTS:
+            # Adicionar campos de geração para agentes iniciais
+            generation = getattr(agent, 'generation', 1)
             await db.execute("""
-                INSERT OR IGNORE INTO agents(id, name, class, emoji, strategy, balance_usd)
-                VALUES(?,?,?,?,?,100.0)
-            """, (agent.id, agent.name, agent.klass, agent.emoji, agent.id))
+                INSERT OR IGNORE INTO agents(id, name, class, emoji, strategy, generation, balance_usd, status)
+                VALUES(?,?,?,?,?,?,100.0,'active')
+            """, (agent.id, agent.name, agent.klass, agent.emoji, agent.id, generation))
         await db.commit()
     loop_task = asyncio.create_task(engine_loop(interval_seconds=30))
     bcast_task = asyncio.create_task(broadcaster())
@@ -104,6 +107,11 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/")
 async def index():
+    return FileResponse("static/index-office.html")
+
+
+@app.get("/classic")
+async def classic_view():
     return FileResponse("static/index.html")
 
 

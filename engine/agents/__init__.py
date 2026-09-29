@@ -1,7 +1,4 @@
-from .rsi_agent import RSIAgent
-from .macd_agent import MACDAgent
-from .bollinger_agent import BollingerAgent
-from .momentum_agent import MomentumAgent
-from .random_agent import RandomAgent
+from .initial_agents import INITIAL_AGENTS
 
-ALL_AGENTS = [RSIAgent(), MACDAgent(), BollingerAgent(), MomentumAgent(), RandomAgent()]
+# Usar os 10 agentes iniciais diversos
+ALL_AGENTS = INITIAL_AGENTS

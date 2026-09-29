@@ -1,0 +1,377 @@
+/* ===== TRADING OFFICE — Estilo Habbo Hotel Isométrico ===== */
+
+:root {
+  --office-bg: #1a1a2e;
+  --office-floor: #2d2d44;
+  --office-wall: #383850;
+  --office-accent: #ffd700;
+  --office-green: #00ff88;
+  --office-red: #ff4466;
+  --office-blue: #00bfff;
+  --office-panel: #14142b;
+  --office-border: #252545;
+  --office-text: #e0e0ff;
+  --office-muted: #8888aa;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: linear-gradient(135deg, #0f0f22 0%, #1a1a33 100%);
+  color: var(--office-text);
+  font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ===== HEADER ===== */
+header {
+  background: linear-gradient(180deg, #0a0a20 0%, transparent);
+  border-bottom: 2px solid var(--office-accent);
+  padding: 1.5rem 2rem;
+  text-align: center;
+  position: relative;
+}
+header::after {
+  content: '';
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--office-accent), transparent);
+}
+.header-inner { position: relative; z-index: 1; }
+h1 {
+  font-size: 2rem;
+  color: var(--office-accent);
+  text-shadow: 0 0 20px rgba(255, 215, 0, 0.4), 2px 2px 4px rgba(0,0,0,0.8);
+  letter-spacing: 3px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.subtitle {
+  color: var(--office-muted);
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  letter-spacing: 1px;
+}
+#status {
+  font-size: 0.8rem;
+  color: var(--office-green);
+  margin-top: 0.5rem;
+  font-weight: bold;
+}
+
+/* ===== LAYOUT ===== */
+main {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  max-width: 1800px;
+  margin: 0 auto;
+}
+
+/* ===== OFFICE ROOM (Isométrico) ===== */
+.office-container {
+  background: var(--office-panel);
+  border: 2px solid var(--office-border);
+  border-radius: 12px;
+  padding: 1rem;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  position: relative;
+}
+
+.office-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid var(--office-border);
+}
+.office-header h2 {
+  color: var(--office-accent);
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+.time-display {
+  font-size: 1.1rem;
+  color: var(--office-green);
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  background: rgba(0,255,136,0.1);
+  padding: 0.3rem 0.8rem;
+  border-radius: 6px;
+  border: 1px solid var(--office-green);
+}
+
+.office-room {
+  position: relative;
+  background: linear-gradient(135deg, #1a1a2e 0%, #0f0f22 100%);
+  border: 2px solid var(--office-border);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 700px;
+}
+
+#office-canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+  cursor: pointer;
+}
+
+/* Tooltip para hover nos traders */
+.trader-tooltip {
+  position: absolute;
+  background: rgba(20, 20, 43, 0.95);
+  border: 2px solid var(--office-accent);
+  border-radius: 8px;
+  padding: 0.8rem 1rem;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+  z-index: 1000;
+  min-width: 220px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.7);
+}
+.trader-tooltip.visible {
+  opacity: 1;
+}
+.tooltip-name {
+  font-weight: bold;
+  font-size: 1rem;
+  color: var(--office-accent);
+  margin-bottom: 0.4rem;
+}
+.tooltip-stat {
+  font-size: 0.85rem;
+  color: var(--office-text);
+  margin: 0.2rem 0;
+}
+.tooltip-pnl {
+  font-weight: bold;
+  font-size: 1.1rem;
+  margin-top: 0.5rem;
+}
+.tooltip-pnl.positive { color: var(--office-green); }
+.tooltip-pnl.negative { color: var(--office-red); }
+
+/* Controles de câmera */
+.office-controls {
+  position: absolute;
+  top: 4rem;
+  right: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  z-index: 10;
+}
+.control-btn {
+  background: rgba(20, 20, 43, 0.9);
+  border: 1px solid var(--office-border);
+  color: var(--office-accent);
+  font-size: 1.2rem;
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.control-btn:hover {
+  background: var(--office-accent);
+  color: #000;
+  transform: scale(1.1);
+  box-shadow: 0 0 16px rgba(255, 215, 0, 0.6);
+}
+
+/* ===== DASHBOARD PANEL ===== */
+.dashboard-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.panel-section {
+  background: var(--office-panel);
+  border: 2px solid var(--office-border);
+  border-radius: 10px;
+  padding: 1rem;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+.panel-section h3 {
+  color: var(--office-accent);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  margin-bottom: 0.8rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--office-border);
+  text-transform: uppercase;
+}
+
+/* Ranking list */
+.ranking-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.rank-item {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--office-border);
+  border-radius: 6px;
+  padding: 0.6rem 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+.rank-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--office-accent);
+  transform: translateX(4px);
+}
+.rank-item.top {
+  background: rgba(255, 215, 0, 0.1);
+  border-color: var(--office-accent);
+}
+.rank-num {
+  font-weight: bold;
+  font-size: 1.1rem;
+  color: var(--office-muted);
+  min-width: 24px;
+}
+.rank-item.top .rank-num {
+  color: var(--office-accent);
+}
+.rank-avatar {
+  font-size: 1.8rem;
+  line-height: 1;
+}
+.rank-info {
+  flex: 1;
+  min-width: 0;
+}
+.rank-name {
+  font-weight: bold;
+  font-size: 0.9rem;
+  color: var(--office-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rank-value {
+  font-size: 0.85rem;
+  color: var(--office-muted);
+  margin-top: 2px;
+}
+.rank-pnl {
+  font-weight: bold;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+.rank-pnl.positive { color: var(--office-green); }
+.rank-pnl.negative { color: var(--office-red); }
+.rank-pnl.neutral { color: var(--office-muted); }
+
+/* Activity feed */
+.activity-feed {
+  max-height: 280px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 0.5rem;
+  padding-right: 0.3rem;
+}
+.activity-feed::-webkit-scrollbar { width: 6px; }
+.activity-feed::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 3px; }
+.activity-feed::-webkit-scrollbar-thumb { background: var(--office-border); border-radius: 3px; }
+.activity-feed::-webkit-scrollbar-thumb:hover { background: var(--office-accent); }
+
+.activity-item {
+  background: rgba(255, 255, 255, 0.03);
+  border-left: 3px solid var(--office-blue);
+  padding: 0.5rem 0.7rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  animation: slideIn 0.3s ease;
+}
+.activity-item.buy { border-left-color: var(--office-green); }
+.activity-item.sell { border-left-color: var(--office-red); }
+.activity-time {
+  color: var(--office-muted);
+  font-size: 0.7rem;
+  display: block;
+  margin-top: 3px;
+}
+.activity-trader {
+  font-weight: bold;
+  color: var(--office-accent);
+}
+.activity-action {
+  font-weight: bold;
+}
+.activity-action.buy { color: var(--office-green); }
+.activity-action.sell { color: var(--office-red); }
+
+/* Mini chart */
+#mini-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: rgba(0,0,0,0.2);
+  border-radius: 6px;
+}
+
+/* ===== FOOTER ===== */
+footer {
+  text-align: center;
+  color: var(--office-muted);
+  font-size: 0.75rem;
+  padding: 1.5rem;
+  margin-top: 1rem;
+  border-top: 1px solid var(--office-border);
+}
+
+/* ===== ANIMATIONS ===== */
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.pulse { animation: pulse 2s infinite; }
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 1200px) {
+  main {
+    grid-template-columns: 1fr;
+  }
+  .dashboard-panel {
+    grid-row: 2;
+  }
+  #office-canvas {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  h1 { font-size: 1.5rem; }
+  main { padding: 1rem; gap: 1rem; }
+  .office-room { min-height: 500px; }
+  .panel-section { padding: 0.8rem; }
+}

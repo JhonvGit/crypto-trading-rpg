@@ -4,8 +4,12 @@ CREATE TABLE IF NOT EXISTS agents (
     class       TEXT NOT NULL,
     emoji       TEXT NOT NULL,
     strategy    TEXT NOT NULL,
+    generation  INTEGER NOT NULL DEFAULT 1,
+    parent_ids  TEXT,
     balance_usd REAL NOT NULL DEFAULT 100.0,
-    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+    eliminated_at DATETIME,
+    status      TEXT NOT NULL DEFAULT 'active'
 );
 
 CREATE TABLE IF NOT EXISTS positions (
@@ -33,4 +37,42 @@ CREATE TABLE IF NOT EXISTS snapshots (
     agent_id    TEXT NOT NULL,
     total_usd   REAL NOT NULL,
     ts          DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS learned_patterns (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent_id        TEXT NOT NULL,
+    pattern_type    TEXT NOT NULL,
+    symbol          TEXT NOT NULL,
+    indicator       TEXT NOT NULL,
+    threshold_low   REAL,
+    threshold_high  REAL,
+    action          TEXT NOT NULL,
+    success_count   INTEGER DEFAULT 0,
+    fail_count      INTEGER DEFAULT 0,
+    avg_pnl         REAL DEFAULT 0.0,
+    confidence      REAL DEFAULT 0.5,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS jev_analysis (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent_id    TEXT NOT NULL,
+    generation  INTEGER NOT NULL,
+    analysis    TEXT NOT NULL,
+    recommendations TEXT NOT NULL,
+    score       REAL NOT NULL,
+    ts          DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS evolution_log (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    eliminated_id   TEXT NOT NULL,
+    new_agent_id    TEXT NOT NULL,
+    parent_ids      TEXT NOT NULL,
+    generation      INTEGER NOT NULL,
+    reason          TEXT NOT NULL,
+    inherited_patterns TEXT,
+    ts              DATETIME DEFAULT CURRENT_TIMESTAMP
 );
