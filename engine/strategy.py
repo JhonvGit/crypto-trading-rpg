@@ -93,10 +93,20 @@ def merge_genes(strategy: str, genes: Optional[dict]) -> dict:
             if k in base and isinstance(v, (int, float)) and not isinstance(v, bool):
                 if not math.isfinite(v):
                     continue
-                v = max(0, v) # Prevents negative thresholds
+                
+                # Validation limits
                 if "period" in k:
-                    v = max(2, min(500, int(v))) # reasonable periods
+                    v = max(2, min(500, int(v)))
+                elif k in ["qty_pct", "stop_loss_pct", "take_profit_pct", "threshold", "oversold", "overbought", "z_threshold"]:
+                    v = max(0, v) # no negative percent or threshold
+                elif k == "fast":
+                    if "slow" in genes and isinstance(genes["slow"], (int, float)) and v >= genes["slow"]:
+                        v = max(1, int(genes["slow"] - 1)) # fast must be < slow
                 base[k] = v
+                
+        if "fast" in base and "slow" in base and base["fast"] >= base["slow"]:
+            base["fast"] = max(1, int(base["slow"] - 1))
+            
     return base
 
 
