@@ -38,7 +38,7 @@ document.getElementById("btn-zo").onclick = () => cam.zoom = Math.max(0.3, cam.z
 document.getElementById("btn-zr").onclick = () => { cam.x=CAM_HOME.x; cam.y=CAM_HOME.y; cam.zoom=CAM_HOME.zoom; };
 
 // ── ISOMETRIC & 3D ENGINE ────────
-const TILE_W = 54, TILE_H = 27, FLOOR_DZ = 140;
+const TILE_W = 54, TILE_H = 27, FLOOR_DZ = 190;
 
 function iso(gx, gy, floor=0) {
   return {
@@ -185,7 +185,10 @@ function drawFloorBlock(gx, gy, floor, isLounge) {
     const {x,y} = iso(gx, gy, floor), s = world2screen(x,y);
     const top = isLounge ? ((gx+gy)%2===0?C.wood1:C.wood2) : ((gx+gy)%2===0?C.floorLight:C.floorDark);
     const thick = isLounge ? C.woodThick : C.floorThick;
+    
+    if (floor > 0) ctx.globalAlpha = 0.55; // Nível de transparência nos andares superiores
     drawCuboid(s, 0, 0, 1, 1, 6, top, thick, shadeColor(thick,-20), 0.5, "rgba(0,0,0,0.1)");
+    if (floor > 0) ctx.globalAlpha = 1.0;
 }
 
 function drawGlassWall(gx, gy, floor, dir) {
