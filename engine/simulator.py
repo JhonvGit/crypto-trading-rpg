@@ -1,89 +1,119 @@
 """
-Portfolio simulator com fee de transação (maker/taker model).
-BUY fee: 0.1% do valor comprado (descontado do balance).
-SELL fee: 0.1% do valor recebido (descontado do retorno).
-Fee registrado em cada trade para transparência total.
+Simulator com limites reais da Binance:
+- validate_order: step_size, min_qty, min_notional
+- Fees: maker 0.10% compra, taker 0.10% venda (Binance Tier 0)
+- Atualiza stats do agente (total_fees_paid, total_pnl_gross, total_trades, win_trades)
+- Persiste notional e fee_rate no trade para auditoria
 """
 import logging
+import math
 from db.database import get_db
+from engine.market import SYMBOL_LIMITS, FEE_MAKER, FEE_TAKER, validate_order
 
 log = logging.getLogger("simulator")
-
-# Binance-like taker fee padrão
-TRADE_FEE_PCT = 0.001   # 0.10% por lado
 
 
 async def execute_trade(agent_id: str, symbol: str, side: str,
                         qty: float, price: float) -> dict:
     """
-    side: "BUY" or "SELL"
-    Returns {"ok": bool, "pnl": float, "fee": float, "reason": str}
+    Executa trade com validação completa de limites Binance.
+    Returns: {ok, pnl, pnl_pct, fee, notional, reason}
     """
+    limits   = SYMBOL_LIMITS.get(symbol, {})
+    fee_rate = FEE_TAKER  # taker para market orders (simplificação)
+
     async with get_db() as db:
         row = await (await db.execute(
-            "SELECT balance_usd FROM agents WHERE id=?", (agent_id,)
+            "SELECT balance_usd, generation FROM agents WHERE id=? AND status='active'",
+            (agent_id,)
         )).fetchone()
         if not row:
-            return {"ok": False, "pnl": 0, "fee": 0, "reason": "agent not found"}
+            return {"ok": False, "pnl": 0, "fee": 0, "notional": 0, "reason": "agent not found or eliminated"}
 
-        balance = row["balance_usd"]
-        pnl = 0.0
-        fee = 0.0
+        balance    = row["balance_usd"]
+        generation = row["generation"] or 1
+        pnl        = 0.0
+        pnl_pct    = 0.0
+        fee_usd    = 0.0
 
         if side == "BUY":
+            # Quanto posso comprar com o balance disponível (considerando fee)
+            max_affordable = balance / (price * (1 + fee_rate))
+            qty = min(qty, max_affordable * 0.9995)  # margem de segurança
+
+            # Validar e ajustar para step_size/min_qty/min_notional
+            qty, err = validate_order(symbol, qty, price)
+            if err or qty <= 0:
+                return {"ok": False, "pnl": 0, "fee": 0, "notional": 0,
+                        "reason": err or "qty inválida após validação"}
+
             gross_cost = qty * price
-            fee = gross_cost * TRADE_FEE_PCT        # fee em USD
-            total_cost = gross_cost + fee           # custo total incluindo fee
+            fee_usd    = gross_cost * fee_rate
+            total_cost = gross_cost + fee_usd          # débito total do balance
 
             if total_cost > balance:
-                # Recalcular qty considerando o fee
-                qty = (balance / (price * (1 + TRADE_FEE_PCT))) * 0.999
-                gross_cost = qty * price
-                fee = gross_cost * TRADE_FEE_PCT
-                total_cost = gross_cost + fee
+                return {"ok": False, "pnl": 0, "fee": 0, "notional": gross_cost,
+                        "reason": f"balance insuficiente: ${balance:.4f} < ${total_cost:.4f}"}
 
-            if qty <= 0 or total_cost > balance:
-                return {"ok": False, "pnl": 0, "fee": 0, "reason": "insufficient balance"}
+            # Preço efetivo (inclui fee de compra para cálculo de P&L correto)
+            effective_price = total_cost / qty
 
-            # Débito: custo + fee
             await db.execute(
-                "UPDATE agents SET balance_usd = balance_usd - ? WHERE id=?",
-                (total_cost, agent_id)
+                "UPDATE agents SET balance_usd = balance_usd - ?, total_fees_paid = total_fees_paid + ? WHERE id=?",
+                (total_cost, fee_usd, agent_id)
             )
-            # Atualiza posição (preço médio inclui fee no custo efetivo)
-            effective_price = total_cost / qty      # preço efetivo com fee
             await db.execute("""
                 INSERT INTO positions(agent_id, symbol, qty, avg_price)
                 VALUES(?,?,?,?)
                 ON CONFLICT(agent_id, symbol) DO UPDATE SET
-                  avg_price = (avg_price*qty + excluded.avg_price*excluded.qty)
+                  avg_price = (avg_price * qty + excluded.avg_price * excluded.qty)
                               / (qty + excluded.qty),
                   qty = qty + excluded.qty
             """, (agent_id, symbol, qty, effective_price))
+
+            notional = gross_cost
 
         elif side == "SELL":
             pos = await (await db.execute(
                 "SELECT qty, avg_price FROM positions WHERE agent_id=? AND symbol=?",
                 (agent_id, symbol)
             )).fetchone()
-            if not pos or pos["qty"] <= 0:
-                return {"ok": False, "pnl": 0, "fee": 0, "reason": "no position"}
-            if qty > pos["qty"]:
+            if not pos or pos["qty"] <= 1e-10:
+                return {"ok": False, "pnl": 0, "fee": 0, "notional": 0, "reason": "sem posição para vender"}
+
+            # Limitar à qty disponível e ajustar step_size
+            qty = min(qty, pos["qty"])
+            qty, err = validate_order(symbol, qty, price)
+            if err or qty <= 0:
+                # Tentar vender tudo disponível
                 qty = pos["qty"]
+                qty, err = validate_order(symbol, qty, price)
+                if err or qty <= 0:
+                    return {"ok": False, "pnl": 0, "fee": 0, "notional": 0,
+                            "reason": err or "qty de venda inválida"}
 
             gross_return = qty * price
-            fee = gross_return * TRADE_FEE_PCT      # fee descontado do retorno
-            net_return = gross_return - fee
+            fee_usd      = gross_return * fee_rate
+            net_return   = gross_return - fee_usd
+            notional     = gross_return
 
-            # P&L = net_return - custo original (avg_price já inclui fee de compra)
-            pnl = net_return - (pos["avg_price"] * qty)
+            # P&L líquido: retorno líquido menos custo efetivo de compra
+            cost_basis = pos["avg_price"] * qty
+            pnl        = net_return - cost_basis
+            pnl_pct    = (pnl / cost_basis * 100) if cost_basis > 0 else 0.0
 
             await db.execute(
-                "UPDATE agents SET balance_usd = balance_usd + ? WHERE id=?",
-                (net_return, agent_id)
+                """UPDATE agents SET balance_usd = balance_usd + ?,
+                   total_fees_paid = total_fees_paid + ?,
+                   total_pnl_gross = total_pnl_gross + ?,
+                   total_trades    = total_trades + 1,
+                   win_trades      = win_trades + ?
+                   WHERE id=?""",
+                (net_return, fee_usd, pnl, 1 if pnl > 0 else 0, agent_id)
             )
+
             new_qty = pos["qty"] - qty
-            if new_qty < 1e-8:
+            if new_qty < limits.get("min_qty", 1e-8) * 0.5:
                 await db.execute(
                     "DELETE FROM positions WHERE agent_id=? AND symbol=?",
                     (agent_id, symbol)
@@ -94,18 +124,19 @@ async def execute_trade(agent_id: str, symbol: str, side: str,
                     (new_qty, agent_id, symbol)
                 )
         else:
-            return {"ok": False, "pnl": 0, "fee": 0, "reason": "unknown side"}
+            return {"ok": False, "pnl": 0, "fee": 0, "notional": 0, "reason": "side inválido"}
 
-        await db.execute(
-            "INSERT INTO trades(agent_id, symbol, side, qty, price, pnl, fee) VALUES(?,?,?,?,?,?,?)",
-            (agent_id, symbol, side, qty, price, pnl, fee)
-        )
+        # Registrar trade completo
+        await db.execute("""
+            INSERT INTO trades(agent_id, symbol, side, qty, price, notional, fee_rate, fee_usd, pnl, pnl_pct, generation)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?)
+        """, (agent_id, symbol, side, qty, price, notional, fee_rate, fee_usd, pnl, pnl_pct, generation))
+
         await db.commit()
-        log.info(
-            f"TRADE {agent_id} {side} {qty:.6f} {symbol} @ {price:.4f} "
-            f"pnl={pnl:.4f} fee={fee:.4f}"
-        )
-        return {"ok": True, "pnl": pnl, "fee": fee, "reason": "ok"}
+
+    log.info(f"TRADE {agent_id[:12]} {side} {qty:.6f} {symbol} @{price:.4f} "
+             f"notional=${notional:.2f} fee=${fee_usd:.4f} pnl=${pnl:.4f} ({pnl_pct:+.2f}%)")
+    return {"ok": True, "pnl": pnl, "pnl_pct": pnl_pct, "fee": fee_usd, "notional": notional, "reason": "ok"}
 
 
 async def portfolio_value(agent_id: str, prices: dict[str, float]) -> float:
@@ -121,7 +152,8 @@ async def portfolio_value(agent_id: str, prices: dict[str, float]) -> float:
             "SELECT symbol, qty FROM positions WHERE agent_id=?", (agent_id,)
         )).fetchall()
         for r in rows:
-            total += r["qty"] * prices.get(r["symbol"], 0)
+            p = prices.get(r["symbol"], 0)
+            total += r["qty"] * p
     return total
 
 
