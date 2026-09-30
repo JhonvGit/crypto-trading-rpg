@@ -348,6 +348,19 @@ class ClassicRSIAgent(BaseAgent):
         return []
 
 
+
+class JevLLMAgent(BaseAgent):
+    id = "jev_100"
+    name = "Jev System One"
+    klass = "Operador LLM"
+    emoji = "🧠"
+    strategy = "jev_llm"
+    symbols = ["BTCUSDT", "ETHUSDT"]
+    generation = 1
+
+    async def decide(self, ohlcv: dict) -> list[dict]:
+        return []
+
 # Lista de todos os agentes iniciais
 INITIAL_AGENTS = [
     ScalpingAgent(),
@@ -364,4 +377,6 @@ INITIAL_AGENTS = [
     BollingerBandAgent(),
     DCAAgent(),
     ClassicRSIAgent(),
+    JevLLMAgent(),
 ]
+

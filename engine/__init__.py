@@ -144,9 +144,15 @@ async def _agent_cycle(agent, prices):
             knowledge = await _get_top_knowledge(symbol)
             klines = await get_klines(symbol, "1m", 60, _http_client)
             pos_qty = await _position_qty(agent_id, symbol)
-            decision = decide_from_klines(
-                strategy, klines, price, genes, knowledge, pos_qty, balance,
-            )
+            if strategy == "jev_llm":
+                from engine.strategy import decide_from_jev
+                decision = await decide_from_jev(
+                    agent_id, symbol, klines, price, genes, knowledge, pos_qty, balance, _http_client
+                )
+            else:
+                decision = decide_from_klines(
+                    strategy, klines, price, genes, knowledge, pos_qty, balance,
+                )
             if not decision:
                 continue
             result = await execute_trade(agent_id, symbol, decision["side"], decision["qty"], price)
