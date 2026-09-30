@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════
-   Trading Office — Smart Multi-Floor Engine
+   Trading Office — Luxury Single-Floor Engine & Mobile Ready
    ═══════════════════════════════════════════════════════════ */
 
 const wrap       = document.getElementById("office-wrap");
@@ -13,38 +13,61 @@ miniCanvas.height = 100;
 function resizeCanvas() {
   canvas.width  = wrap.clientWidth;
   canvas.height = wrap.clientHeight;
-  ctx.imageSmoothingEnabled = false; // Pixel art style
+  ctx.imageSmoothingEnabled = false;
 }
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
-// ── CÂMERA ────────
-const CAM_HOME = { x: -80, y: -40, zoom: 0.8 };
+// ── CÂMERA & CONTROLES TOUCH ────────
+const CAM_HOME = { x: -80, y: -40, zoom: 0.85 };
 let cam  = { ...CAM_HOME };
 let drag = { down: false, sx: 0, sy: 0, cx: 0, cy: 0 };
 let mouse = { cx: -999, cy: -999 };
+let initialPinchDist = null;
+let initialZoom = null;
 
-canvas.addEventListener("mousedown", e => { drag.down=true; drag.sx=e.clientX; drag.sy=e.clientY; drag.cx=cam.x; drag.cy=cam.y; });
-window.addEventListener("mouseup",   () => drag.down=false);
-window.addEventListener("mousemove", e => {
-  if(drag.down) { cam.x = drag.cx+(e.clientX-drag.sx); cam.y = drag.cy+(e.clientY-drag.sy); }
+function handleStart(x, y) { drag.down=true; drag.sx=x; drag.sy=y; drag.cx=cam.x; drag.cy=cam.y; }
+function handleMove(x, y) {
+  if(drag.down) { cam.x = drag.cx+(x-drag.sx); cam.y = drag.cy+(y-drag.sy); }
   const r = canvas.getBoundingClientRect();
-  mouse.cx = e.clientX-r.left; mouse.cy = e.clientY-r.top;
-});
-canvas.addEventListener("wheel", e => { e.preventDefault(); cam.zoom = Math.max(0.3, Math.min(2.5, cam.zoom-e.deltaY*0.001)); }, {passive:false});
+  mouse.cx = x - r.left; mouse.cy = y - r.top;
+}
+function handleEnd() { drag.down=false; initialPinchDist=null; }
+
+canvas.addEventListener("mousedown", e => handleStart(e.clientX, e.clientY));
+window.addEventListener("mouseup", handleEnd);
+window.addEventListener("mousemove", e => handleMove(e.clientX, e.clientY));
+
+// Mobile Touch (Drag + Zoom)
+canvas.addEventListener("touchstart", e => {
+    if (e.touches.length === 1) handleStart(e.touches[0].clientX, e.touches[0].clientY);
+}, {passive:false});
+window.addEventListener("touchend", handleEnd);
+canvas.addEventListener("touchmove", e => {
+   if (e.touches.length === 2) {
+       e.preventDefault();
+       const dx = e.touches[0].clientX - e.touches[1].clientX;
+       const dy = e.touches[0].clientY - e.touches[1].clientY;
+       const dist = Math.hypot(dx, dy);
+       if (initialPinchDist == null) { initialPinchDist = dist; initialZoom = cam.zoom; }
+       else { cam.zoom = Math.max(0.3, Math.min(2.5, initialZoom * (dist / initialPinchDist))); }
+   } else if (e.touches.length === 1) {
+       e.preventDefault();
+       handleMove(e.touches[0].clientX, e.touches[0].clientY);
+   }
+}, {passive:false});
+
+canvas.addEventListener("wheel", e => { e.preventDefault(); cam.zoom = Math.max(0.3, Math.min(2.5, cam.zoom-e.deltaY*0.002)); }, {passive:false});
 
 document.getElementById("btn-zi").onclick = () => cam.zoom = Math.min(2.5, cam.zoom + 0.15);
 document.getElementById("btn-zo").onclick = () => cam.zoom = Math.max(0.3, cam.zoom - 0.15);
 document.getElementById("btn-zr").onclick = () => { cam.x=CAM_HOME.x; cam.y=CAM_HOME.y; cam.zoom=CAM_HOME.zoom; };
 
 // ── ISOMETRIC & 3D ENGINE ────────
-const TILE_W = 54, TILE_H = 27, FLOOR_DZ = 190;
+const TILE_W = 60, TILE_H = 30;
 
-function iso(gx, gy, floor=0) {
-  return {
-    x: (gx - gy) * (TILE_W / 2),
-    y: (gx + gy) * (TILE_H / 2) - (floor * FLOOR_DZ)
-  };
+function iso(gx, gy) {
+  return { x: (gx - gy) * (TILE_W / 2), y: (gx + gy) * (TILE_H / 2) };
 }
 function world2screen(wx, wy) {
   return {
@@ -63,30 +86,29 @@ function shadeColor(hex, p) {
 }
 
 const C = {
-  floorLight: "#f4f7f6", floorDark: "#e8edea", floorThick: "#c8d1ce",
-  wood1: "#5c4033", wood2: "#4a3328", woodThick: "#2e1e17",
-  glass: "rgba(220, 240, 255, 0.25)", glassEdge: "rgba(180, 210, 255, 0.4)",
-  deskTop: "#1e293b", deskLegs: "#94a3b8", deskEdge: "#0f172a",
+  floorLight: "#ecf0f1", floorDark: "#e1e6e8", floorThick: "#bdc3c7",
+  wood1: "#8e5a3e", wood2: "#7a4c33", woodThick: "#4d2e1c",
+  wallBack: "#d5dbdb", wallLeft: "#c2cacb", // Solid fancy walls
+  deskTop: "#ffffff", deskLegs: "#95a5a6", deskEdge: "#ecf0f1",
   skin: ["#ffce9e", "#e6b07e", "#996b42", "#664021", "#4a2c13"],
-  clothes: ["#3b82f6", "#ef4444", "#f59e0b", "#10b981", "#8b5cf6", "#14b8a6", "#334155", "#f43f5e"],
-  hair: ["#1e1e1e", "#3e2723", "#facc15", "#7f1d1d"]
+  clothes: ["#3498db", "#e74c3c", "#f39c12", "#2ecc71", "#9b59b6", "#1abc9c", "#34495e"],
+  hair: ["#2c3e50", "#3e2723", "#f1c40f", "#d35400"]
 };
 
-const ROOM_W = 14, ROOM_H = 13;
-const DESKS_PER_FLOOR = 10;
+// Ampliado para UM único andar luxuoso
+const ROOM_W = 18, ROOM_H = 15;
 
 function getDeskConfig(idx) {
-    const i = idx % DESKS_PER_FLOOR;
+    // Organizado em 5 colunas x 3 linhas => até 15 agentes
     return {
-        gx: 2 + (i % 5) * 2,
-        gy: 2 + Math.floor(i / 5) * 4,
-        floor: Math.floor(idx / DESKS_PER_FLOOR)
+        gx: 2 + (idx % 6) * 2.5,
+        gy: 2 + Math.floor(idx / 6) * 3
     };
 }
 
 let time = 0;
 let agentsData = [];
-let avatarsMap = {}; // State machine per agent
+let avatarsMap = {};
 let activityLog = new Set();
 let elimCount = 0;
 let hoveredAgent = null;
@@ -99,41 +121,37 @@ class AgentAvatar {
     const desk = getDeskConfig(idx);
     this.deskX = desk.gx;
     this.deskY = desk.gy;
-    this.floor = desk.floor;
     this.x = desk.gx;
     this.y = desk.gy;
     this.tx = this.x;
     this.ty = this.y;
-    this.state = 'working'; // working, walking, resting
+    this.state = 'working';
     this.timer = Math.random() * 500;
     this.agent = agent;
-    // Visuais
     this.skin = C.skin[idx % C.skin.length];
     this.cloth = C.clothes[idx % C.clothes.length];
     this.hair = C.hair[idx % C.hair.length];
   }
   update(agentData) {
     this.agent = agentData;
-    const isLoungeArea = (x, y) => (x >= 2 && x <= 11 && y >= 10 && y <= 12);
     
     if (this.state === 'working' || this.state === 'resting') {
       this.timer--;
-      // Interrupt to work heavily if recent trade
       if (this.agent.last_decision && this.state !== 'working' && Math.random() < 0.1) {
          this.state = 'walking';
-         this.tx = this.deskX; this.ty = this.deskY;
+         this.tx = this.deskX; this.ty = this.deskY; // Volta urgente pra mesa
       }
       
       if (this.timer <= 0) {
         if (this.state === 'working') {
-           if (Math.random() < 0.25) {
+           if (Math.random() < 0.25) { // Vai pro lounge (no fundo à direita)
              this.state = 'walking';
-             this.tx = 2 + Math.random() * 9;
-             this.ty = 10.5 + Math.random() * 1.5;
+             this.tx = 12 + Math.random() * 4;
+             this.ty = 11 + Math.random() * 2;
              this.timer = 500 + Math.random() * 400; 
            } else { this.timer = 200 + Math.random() * 400; }
-        } else {
-           this.state = 'walking'; // go back
+        } else { // Retorna ao trabalho
+           this.state = 'walking'; 
            this.tx = this.deskX; this.ty = this.deskY;
            this.timer = 400 + Math.random() * 600;
         }
@@ -142,8 +160,8 @@ class AgentAvatar {
        const dx = this.tx - this.x, dy = this.ty - this.y;
        const dist = Math.hypot(dx, dy);
        if (dist > 0.08) {
-           this.x += (dx / dist) * 0.035;
-           this.y += (dy / dist) * 0.035;
+           this.x += (dx / dist) * 0.045;
+           this.y += (dy / dist) * 0.045;
        } else {
            this.x = this.tx; this.y = this.ty;
            this.state = (this.x === this.deskX && this.y === this.deskY) ? 'working' : 'resting';
@@ -153,7 +171,7 @@ class AgentAvatar {
 }
 
 // ── VOXEL RENDER ENGINE ────────
-function drawCuboid(s, dx, dy, w, d, h, top, left, right, thick=1, stroke="#111") {
+function drawCuboid(s, dx, dy, w, d, h, top, left, right, thick=1, stroke="#222") {
   const z = cam.zoom;
   const xw = (w * TILE_W/2) * z, yw = (d * TILE_W/2) * z;
   const xh = (w * TILE_H/2) * z, yh = (d * TILE_H/2) * z;
@@ -181,97 +199,100 @@ function drawCuboid(s, dx, dy, w, d, h, top, left, right, thick=1, stroke="#111"
   }
 }
 
-function drawFloorBlock(gx, gy, floor, isLounge) {
-    const {x,y} = iso(gx, gy, floor), s = world2screen(x,y);
+function drawFloorBlock(gx, gy, isLounge) {
+    const {x,y} = iso(gx, gy), s = world2screen(x,y);
     const top = isLounge ? ((gx+gy)%2===0?C.wood1:C.wood2) : ((gx+gy)%2===0?C.floorLight:C.floorDark);
     const thick = isLounge ? C.woodThick : C.floorThick;
-    
-    if (floor > 0) ctx.globalAlpha = 0.55; // Nível de transparência nos andares superiores
-    drawCuboid(s, 0, 0, 1, 1, 6, top, thick, shadeColor(thick,-20), 0.5, "rgba(0,0,0,0.1)");
-    if (floor > 0) ctx.globalAlpha = 1.0;
+    drawCuboid(s, 0, 0, 1, 1, 8, top, thick, shadeColor(thick,-15), 1, "rgba(0,0,0,0.15)");
 }
 
-function drawGlassWall(gx, gy, floor, dir) {
-    const {x,y} = iso(gx, gy, floor), s = world2screen(x,y);
-    const z = cam.zoom, w = TILE_W/2 * z, h = TILE_H/2 * z, wh = 80 * z;
-    ctx.fillStyle = C.glass; ctx.strokeStyle = C.glassEdge; ctx.lineWidth = 1;
+function drawSolidWall(gx, gy, dir) {
+    const {x,y} = iso(gx, gy), s = world2screen(x,y);
+    const z = cam.zoom, w = TILE_W/2 * z, h = TILE_H/2 * z, wh = 120 * z;
+    ctx.lineWidth = 1.5; ctx.strokeStyle = "#999";
     ctx.beginPath();
     if (dir === 'left') {
+        ctx.fillStyle = C.wallLeft;
         ctx.moveTo(s.x, s.y); ctx.lineTo(s.x-w, s.y-h);
         ctx.lineTo(s.x-w, s.y-h-wh); ctx.lineTo(s.x, s.y-wh);
-    } else { // right
+    } else {
+        ctx.fillStyle = C.wallBack;
         ctx.moveTo(s.x, s.y); ctx.lineTo(s.x+w, s.y-h);
         ctx.lineTo(s.x+w, s.y-h-wh); ctx.lineTo(s.x, s.y-wh);
     }
     ctx.closePath(); ctx.fill(); ctx.stroke();
+    
+    // Baseboard da parede
+    ctx.fillStyle = shadeColor(dir==='left'?C.wallLeft:C.wallBack, -20);
+    ctx.beginPath();
+    if(dir==='left') { ctx.moveTo(s.x, s.y); ctx.lineTo(s.x-w, s.y-h); ctx.lineTo(s.x-w, s.y-h-12*z); ctx.lineTo(s.x, s.y-12*z); }
+    else { ctx.moveTo(s.x, s.y); ctx.lineTo(s.x+w, s.y-h); ctx.lineTo(s.x+w, s.y-h-12*z); ctx.lineTo(s.x, s.y-12*z); }
+    ctx.fill();
+    
+    // Friso decorativo
+    if ((gx+gy)%4===0) {
+        ctx.fillStyle = "rgba(0,0,0,0.1)";
+        ctx.beginPath();
+        if(dir==='left') { ctx.moveTo(s.x, s.y-40*z); ctx.lineTo(s.x-w, s.y-h-40*z); ctx.lineTo(s.x-w, s.y-h-45*z); ctx.lineTo(s.x, s.y-45*z); }
+        else { ctx.moveTo(s.x, s.y-40*z); ctx.lineTo(s.x+w, s.y-h-40*z); ctx.lineTo(s.x+w, s.y-h-45*z); ctx.lineTo(s.x, s.y-45*z); }
+        ctx.fill();
+    }
 }
 
-function drawFancyDesk(gx, gy, floor) {
-    const {x,y} = iso(gx, gy, floor), s = world2screen(x,y);
-    // Legs
-    drawCuboid(s, -12, -4, 0.1, 0.1, 16, C.deskLegs, C.deskLegs, shadeColor(C.deskLegs,-20), 0.5);
-    drawCuboid(s, 12, -4, 0.1, 0.1, 16, C.deskLegs, C.deskLegs, shadeColor(C.deskLegs,-20), 0.5);
-    // Table
-    drawCuboid(s, 0, -6, 0.85, 0.5, 2, C.deskTop, C.deskEdge, C.deskEdge, 1, "#111");
-    // Screens (Dual monitors!)
-    drawCuboid(s, -4, -8, 0.15, 0.15, 2, "#444", "#333", "#222"); // Base L
-    drawCuboid(s, 5, -5, 0.15, 0.15, 2, "#444", "#333", "#222"); // Base R
-    drawCuboid(s, -5, -10, 0.35, 0.05, 11, "#222", "#111", shadeColor("#111", -20));
-    drawCuboid(s, 6, -7, 0.35, 0.05, 11, "#222", "#111", shadeColor("#111", -20));
+function drawFancyDesk(gx, gy) {
+    const {x,y} = iso(gx, gy), s = world2screen(x,y);
+    // Mesa premium preta e branca
+    drawCuboid(s, -12, -4, 0.15, 0.15, 18, C.deskLegs, "#7f8c8d", "#bdc3c7", 1);
+    drawCuboid(s, 12, -4, 0.15, 0.15, 18, C.deskLegs, "#7f8c8d", "#bdc3c7", 1);
+    drawCuboid(s, 0, -6, 0.9, 0.6, 2, C.deskTop, C.deskEdge, "#bdc3c7", 1.5, "#95a5a6");
+    // Computador moderno
+    drawCuboid(s, -3, -8, 0.2, 0.2, 2, "#444", "#333", "#222", 1);
+    drawCuboid(s, -3, -10, 0.45, 0.1, 14, "#111", "#050505", shadeColor("#111", -20), 1, "#444");
+    // Teclado rgb
+    drawCuboid(s, 10, -6, 0.35, 0.15, 1, "#rrr", "#bbb", "#aaa", 0);
 }
 
 function drawSmartAvatar(ava) {
-    // Coordinate smoothing
-    const {x,y} = iso(ava.x - 0.5, ava.y - 0.5, ava.floor);
-    // Bobbing when walking
+    const {x,y} = iso(ava.x - 0.5, ava.y - 0.5);
     const isWalk = ava.state === 'walking';
     const bob = isWalk ? Math.abs(Math.sin(time*20+ava.idx)) * 4 * cam.zoom : 0;
     const s = world2screen(x, y - bob/cam.zoom);
     const z = cam.zoom;
-    
-    // Type bounce
     const isTyping = ava.agent.last_decision && ava.state === 'working';
     const typeB = isTyping ? (Math.sin(time*20+ava.idx)>0? 1.5 : 0) : 0;
     
     // Shadow
     ctx.fillStyle = "rgba(0,0,0,0.15)";
-    ctx.beginPath(); ctx.ellipse(s.x, s.y+4*z + (bob), 12*z, 6*z, 0, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(s.x, s.y+2*z + (bob), 14*z, 7*z, 0, 0, Math.PI*2); ctx.fill();
 
-    // Body Block
-    drawCuboid(s, -6, -4, 0.3, 0.3, 11, ava.cloth, shadeColor(ava.cloth,-15), shadeColor(ava.cloth,-30), 1.2, "#0f172a");
-    
-    // Arms (swing if walking)
-    const swing = isWalk ? Math.sin(time*15+ava.idx)*3 : 0;
-    drawCuboid(s, -2, -5 + typeB, 0.12, 0.25, 7, ava.cloth, shadeColor(ava.cloth,-15), shadeColor(ava.cloth,-30), 1, "#0f172a");
-    drawCuboid(s, -10, -7 - typeB, 0.12, 0.25, 7, ava.cloth, shadeColor(ava.cloth,-15), shadeColor(ava.cloth,-30), 1, "#0f172a");
-    
+    drawCuboid(s, -6, -4, 0.35, 0.35, 13, ava.cloth, shadeColor(ava.cloth,-15), shadeColor(ava.cloth,-30), 1.2, "#111");
+    // Arms
+    const swing = isWalk ? Math.sin(time*15+ava.idx)*4 : 0;
+    drawCuboid(s, -2, -5 + typeB, 0.14, 0.25, 9, ava.cloth, shadeColor(ava.cloth,-15), shadeColor(ava.cloth,-30), 1.2, "#111");
+    drawCuboid(s, -10, -7 - typeB, 0.14, 0.25, 9, ava.cloth, shadeColor(ava.cloth,-15), shadeColor(ava.cloth,-30), 1.2, "#111");
     // Hands
-    drawCuboid(s, -1, -4 + typeB + swing, 0.1, 0.1, 2, ava.skin, shadeColor(ava.skin,-15), shadeColor(ava.skin,-30), 1, "#0f172a");
-    drawCuboid(s, -9, -6 - typeB - swing, 0.1, 0.1, 2, ava.skin, shadeColor(ava.skin,-15), shadeColor(ava.skin,-30), 1, "#0f172a");
-    
+    drawCuboid(s, -1, -4 + typeB + swing, 0.12, 0.12, 3, ava.skin, shadeColor(ava.skin,-15), shadeColor(ava.skin,-30), 1, "#111");
+    drawCuboid(s, -9, -6 - typeB - swing, 0.12, 0.12, 3, ava.skin, shadeColor(ava.skin,-15), shadeColor(ava.skin,-30), 1, "#111");
     // Head Square
-    drawCuboid(s, -6, -15, 0.4, 0.4, 9, ava.skin, shadeColor(ava.skin,-10), shadeColor(ava.skin,-20), 1.2, "#0f172a");
-    
+    drawCuboid(s, -6, -17, 0.45, 0.45, 10, ava.skin, shadeColor(ava.skin,-10), shadeColor(ava.skin,-20), 1.5, "#111");
     // Hair
-    drawCuboid(s, -6, -24, 0.45, 0.45, 3, ava.hair, shadeColor(ava.hair,-10), shadeColor(ava.hair,-20), 1.2, "#0f172a");
-    drawCuboid(s, -11, -21, 0.15, 0.45, 4, ava.hair, shadeColor(ava.hair,-10), shadeColor(ava.hair,-20), 1.2, "#0f172a");
+    drawCuboid(s, -6, -27, 0.5, 0.5, 4, ava.hair, shadeColor(ava.hair,-10), shadeColor(ava.hair,-20), 1.5, "#111");
+    drawCuboid(s, -11, -24, 0.15, 0.5, 5, ava.hair, shadeColor(ava.hair,-10), shadeColor(ava.hair,-20), 1.5, "#111");
 
-    // Face / Eyes mapping back to front side
     ctx.fillStyle = "#fff";
-    const hx = s.x - 5*z, hy = s.y - 20*z;
-    ctx.beginPath(); ctx.arc(hx - 2*z, hy, 1.2*z, 0, 7); ctx.fill();
-    ctx.beginPath(); ctx.arc(hx - 7*z, hy - 2*z, 1.2*z, 0, 7); ctx.fill();
+    const hx = s.x - 5*z, hy = s.y - 22*z;
+    ctx.beginPath(); ctx.arc(hx - 2*z, hy, 1.5*z, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(hx - 7*z, hy - 2*z, 1.5*z, 0, 7); ctx.fill();
     
     const mood = ava.agent.pnl_pct >= 0 ? "#10b981" : "#f43f5e";
     ctx.fillStyle = mood;
-    ctx.beginPath(); ctx.arc(hx - 2*z, hy, 0.7*z, 0, 7); ctx.fill();
-    ctx.beginPath(); ctx.arc(hx - 7*z, hy - 2*z, 0.7*z, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(hx - 2*z, hy, 0.8*z, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(hx - 7*z, hy - 2*z, 0.8*z, 0, 7); ctx.fill();
     
-    // Status Bubble
     drawDecisionBubble(s, z, ava);
     
-    // Hit test tooltip
-    if (mouse.cx>s.x-14*z && mouse.cx<s.x+14*z && mouse.cy>s.y-35*z && mouse.cy<s.y) {
+    // Tabela clique adaptativa para celular (alvo expandido)
+    if (Math.hypot(mouse.cx - s.x, mouse.cy - (s.y-20*z)) < 25*z) {
       hoveredAgent = ava.agent;
       if (typeof showTooltip === 'function') showTooltip(ava.agent);
     }
@@ -279,35 +300,32 @@ function drawSmartAvatar(ava) {
 
 function drawDecisionBubble(s, z, ava) {
     const dec = ava.agent.last_decision;
-    if (!dec || z < 0.6) return;
+    if (!dec || z < 0.5) return;
     const txt = `${dec.side==="BUY"?"▲":"▼"} ${dec.symbol}`;
     const floatY = (Math.sin(time*3+ava.idx)*3) * z;
-    ctx.font = `bold ${5*z}px 'JetBrains Mono', monospace`;
-    const w = ctx.measureText(txt).width + 10*z, bx = s.x - w/2, by = s.y - 42*z + floatY;
+    ctx.font = `bold ${5.5*z}px 'Plus Jakarta Sans', sans-serif`;
+    const w = ctx.measureText(txt).width + 12*z, bx = s.x - w/2, by = s.y - 46*z + floatY;
     
-    ctx.fillStyle = "rgba(10, 15, 29, 0.9)";
+    ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
     ctx.strokeStyle = dec.side==="BUY" ? "#10b981" : "#f43f5e";
-    ctx.lineWidth = 1.5; ctx.beginPath();
-    ctx.roundRect(bx, by, w, 10*z, 3*z); ctx.fill(); ctx.stroke();
-    
-    // Pointer
-    ctx.beginPath(); ctx.moveTo(s.x-2*z, by+10*z); ctx.lineTo(s.x+2*z, by+10*z); ctx.lineTo(s.x, by+14*z); ctx.fill();
+    ctx.lineWidth = 1.8; ctx.beginPath();
+    ctx.roundRect(bx, by, w, 12*z, 4*z); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(s.x-3*z, by+12*z); ctx.lineTo(s.x+3*z, by+12*z); ctx.lineTo(s.x, by+17*z); ctx.fill();
     
     ctx.fillStyle = ctx.strokeStyle;
-    ctx.textAlign = "center"; ctx.fillText(txt, s.x, by + 7.5*z); ctx.textAlign = "left";
+    ctx.textAlign = "center"; ctx.fillText(txt, s.x, by + 8.5*z); ctx.textAlign = "left";
 }
 
-function drawSofa(gx, gy, floor, col) {
-    const {x,y} = iso(gx, gy, floor), s = world2screen(x,y);
-    drawCuboid(s, 0, 0, 0.6, 1.4, 4, col, shadeColor(col,-15), shadeColor(col,-30), 1, "#111");
-    // Backrest
-    drawCuboid(s, -6, 4, 0.3, 1.4, 10, shadeColor(col,-5), shadeColor(col,-20), shadeColor(col,-35), 1, "#111");
+function drawSofa(gx, gy, col) {
+    const {x,y} = iso(gx, gy), s = world2screen(x,y);
+    drawCuboid(s, 0, 0, 0.8, 1.8, 5, col, shadeColor(col,-15), shadeColor(col,-30), 1.5, "#222");
+    drawCuboid(s, -8, 5, 0.3, 1.8, 12, shadeColor(col,-5), shadeColor(col,-20), shadeColor(col,-35), 1.5, "#222");
 }
 
-function drawPlant(gx, gy, floor) {
-    const {x,y} = iso(gx, gy, floor), s = world2screen(x,y);
-    drawCuboid(s, 0, 0, 0.5, 0.5, 6, "#e2e8f0", "#cbd5e1", "#94a3b8"); // vase
-    drawCuboid(s, 0, -6, 0.6, 0.6, 6, "#10b981", "#059669", "#047857", 1, "#022c22"); // leaves
+function drawPlant(gx, gy) {
+    const {x,y} = iso(gx, gy), s = world2screen(x,y);
+    drawCuboid(s, 0, 0, 0.6, 0.6, 8, "#e2e8f0", "#cbd5e1", "#94a3b8", 1.5, "#555"); 
+    drawCuboid(s, 0, -8, 0.8, 0.8, 8, "#10b981", "#059669", "#047857", 1.5, "#022c22"); 
 }
 
 // ── MEGA RENDERING LOOP ────────
@@ -315,73 +333,58 @@ function renderOffice() {
     hoveredAgent = null;
     ctx.clearRect(0,0,canvas.width,canvas.height);
     
-    // Rich gradient background (Night City tint)
-    const bgGrad = ctx.createLinearGradient(0,0, 0, canvas.height);
-    bgGrad.addColorStop(0, "#080c10"); bgGrad.addColorStop(1, "#131a28");
-    ctx.fillStyle = bgGrad; ctx.fillRect(0,0,canvas.width, canvas.height);
+    // Background Radial Rico
+    const bg = ctx.createRadialGradient(canvas.width/2, canvas.height/3, 0, canvas.width/2, canvas.height/2, canvas.width);
+    bg.addColorStop(0, "#2c3e50"); bg.addColorStop(1, "#0f172a");
+    ctx.fillStyle = bg; ctx.fillRect(0,0,canvas.width, canvas.height);
     
-    // Manage Avatars lifecycle
     agentsData.forEach((ag, i) => {
         if (!avatarsMap[ag.id]) avatarsMap[ag.id] = new AgentAvatar(ag, i);
         avatarsMap[ag.id].update(ag);
     });
     
-    const floorsConfigured = Math.max(1, Math.ceil(agentsData.length / DESKS_PER_FLOOR));
     const drawQueue = [];
     
-    for (let f = 0; f < floorsConfigured; f++) {
-        const floorBaseZ = f * 10000;
-        
-        // Draw Glass Back Walls (Left e Right)
-        for (let gx = 0; gx < ROOM_W; gx++) {
-            drawQueue.push({ type: 'glass', side: 'right', gx, gy: 0, floor: f, z: Math.round((gx+0)*10) + floorBaseZ - 50 });
-        }
+    for (let gx = 0; gx < ROOM_W; gx++) {
+        drawQueue.push({ type: 'wallR', gx, gy: 0, z: Math.round((gx)*10) - 50 });
+    }
+    for (let gy = 0; gy < ROOM_H; gy++) {
+        drawQueue.push({ type: 'wallL', gx: 0, gy, z: Math.round((gy)*10) - 50 });
+    }
+
+    for (let gx = 0; gx < ROOM_W; gx++) {
         for (let gy = 0; gy < ROOM_H; gy++) {
-            drawQueue.push({ type: 'glass', side: 'left', gx: 0, gy, floor: f, z: Math.round((0+gy)*10) + floorBaseZ - 50 });
-        }
-    
-        for (let gx = 0; gx < ROOM_W; gx++) {
-            for (let gy = 0; gy < ROOM_H; gy++) {
-                const isLounge = (gx >= 2 && gx <= 11 && gy >= 10 && gy <= 12);
-                if (gx > 0 && gx < ROOM_W && gy > 0 && gy < ROOM_H) {
-                  drawQueue.push({ type: 'tile', gx, gy, floor: f, isLounge, z: Math.round((gx+gy)*10) + floorBaseZ });
-                }
+            const isLounge = (gx >= 12 && gx <= 17 && gy >= 8 && gy <= 14);
+            if (gx > 0 && gx < ROOM_W && gy > 0 && gy < ROOM_H) {
+              drawQueue.push({ type: 'tile', gx, gy, isLounge, z: Math.round((gx+gy)*10) });
             }
-        }
-        
-        // Desks
-        for (let i = 0; i < DESKS_PER_FLOOR; i++) {
-           const idx = f * DESKS_PER_FLOOR + i;
-           if (idx < agentsData.length) {
-               const dc = getDeskConfig(idx);
-               drawQueue.push({ type: 'desk', gx: dc.gx, gy: dc.gy, floor: f, z: Math.round((dc.gx+dc.gy)*10) + floorBaseZ + 5 });
-           }
-        }
-        
-        // Lounge Furniture
-        drawQueue.push({ type: 'sofa', gx: 4, gy: 11, col: "#334155", floor: f, z: Math.round((4+11)*10) + floorBaseZ + 6 });
-        drawQueue.push({ type: 'sofa', gx: 9, gy: 11, col: "#6366f1", floor: f, z: Math.round((9+11)*10) + floorBaseZ + 6 });
-        drawQueue.push({ type: 'plant', gx: 2, gy: 10, floor: f, z: Math.round((2+10)*10) + floorBaseZ + 6 });
-        drawQueue.push({ type: 'plant', gx: 11, gy: 10, floor: f, z: Math.round((11+10)*10) + floorBaseZ + 6 });
-        // Glass railing front
-        for (let gx=1; gx<ROOM_W; gx++) {
-            drawQueue.push({ type: 'glass', side: 'right', gx, gy: ROOM_H-1, floor: f, z: Math.round((gx+ROOM_H-1)*10) + floorBaseZ + 100 });
         }
     }
     
-    // Add Avatar objects
+    for (let i = 0; i < agentsData.length; i++) {
+        const dc = getDeskConfig(i);
+        drawQueue.push({ type: 'desk', gx: dc.gx, gy: dc.gy, z: Math.round((dc.gx+dc.gy)*10) + 5 });
+    }
+    
+    const lz = Math.round((14+11)*10) + 6;
+    drawQueue.push({ type: 'sofa', gx: 14, gy: 9, col: "#e74c3c", z: Math.round((14+9)*10) + 6 });
+    drawQueue.push({ type: 'sofa', gx: 16, gy: 11, col: "#8e44ad", z: Math.round((16+11)*10) + 6 });
+    drawQueue.push({ type: 'plant', gx: 13, gy: 13, z: Math.round((13+13)*10) + 6 });
+    drawQueue.push({ type: 'plant', gx: 17, gy: 9, z: Math.round((17+9)*10) + 6 });
+    
     Object.values(avatarsMap).forEach(ava => {
-        drawQueue.push({ type: 'avatar', ava, z: Math.round((ava.x + ava.y)*10) + ava.floor * 10000 + 15 });
+        drawQueue.push({ type: 'avatar', ava, z: Math.round((ava.x + ava.y)*10) + 15 });
     });
     
     drawQueue.sort((a,b) => a.z - b.z);
     
     for (const item of drawQueue) {
-        if (item.type === 'tile') drawFloorBlock(item.gx, item.gy, item.floor, item.isLounge);
-        else if (item.type === 'glass') drawGlassWall(item.gx, item.gy, item.floor, item.side);
-        else if (item.type === 'desk') drawFancyDesk(item.gx, item.gy, item.floor);
-        else if (item.type === 'sofa') drawSofa(item.gx, item.gy, item.floor, item.col);
-        else if (item.type === 'plant') drawPlant(item.gx, item.gy, item.floor);
+        if (item.type === 'tile') drawFloorBlock(item.gx, item.gy, item.isLounge);
+        else if (item.type === 'wallR') drawSolidWall(item.gx, item.gy, 'right');
+        else if (item.type === 'wallL') drawSolidWall(item.gx, item.gy, 'left');
+        else if (item.type === 'desk') drawFancyDesk(item.gx, item.gy);
+        else if (item.type === 'sofa') drawSofa(item.gx, item.gy, item.col);
+        else if (item.type === 'plant') drawPlant(item.gx, item.gy);
         else if (item.type === 'avatar') drawSmartAvatar(item.ava);
     }
     
@@ -389,7 +392,26 @@ function renderOffice() {
     if (!hoveredAgent && typeof tooltip !== 'undefined') tooltip.classList.remove("show");
 }
 
+function deskScreen(idx) {
+  const desk = getDeskConfig(idx);
+  const { x, y } = iso(desk.gx - 0.5, desk.gy - 0.5); // Remove desk.floor arg
+  return world2screen(x, y);
+}
+function hitDesk(cx, cy, idx) {
+  const s = deskScreen(idx);
+  const zz = cam.zoom;
+  // Aumente a HitBox para celular
+  return cx > s.x - 30*zz && cx < s.x + 30*zz && cy > s.y - 70*zz && cy < s.y + 20*zz;
+}
 
+canvas.addEventListener("click", e => {
+  if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 8) return;
+  const r = canvas.getBoundingClientRect();
+  const cx = e.clientX - r.left, cy = e.clientY - r.top;
+  for (let i = 0; i < agentsData.length; i++) {
+    if (hitDesk(cx, cy, i)) { openModal(agentsData[i]); break; }
+  }
+});
 function strategyLabel(agent) {
   return (agent && agent.strategy) ? String(agent.strategy) : "—";
 }
@@ -941,3 +963,40 @@ connect();
 
 // Loop de animação
 (function loop(){ renderOffice(); requestAnimationFrame(loop); })();
+
+
+// ── MOBILE TABS LOGIC ────────
+document.querySelectorAll('.panel-tab-btn').forEach(btn => {
+    btn.onclick = () => {
+        const target = btn.dataset.ptab;
+        document.querySelectorAll('.panel-tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        document.getElementById('sec-stats').style.display = (target === 'all') ? 'block' : 'none';
+        document.getElementById('sec-chart').style.display = (target === 'all' || target === 'ranking') ? 'block' : 'none';
+        document.getElementById('sec-ranking').style.display = (target === 'all' || target === 'ranking') ? 'block' : 'none';
+        document.getElementById('sec-activity').style.display = (target === 'all' || target === 'activity') ? 'block' : 'none';
+    };
+});
+
+const mBtnOffice = document.getElementById("m-btn-office");
+const mBtnRank = document.getElementById("m-btn-rank");
+const mBtnFeed = document.getElementById("m-btn-feed");
+
+function activateMNav(btnId) {
+    [mBtnOffice, mBtnRank, mBtnFeed].forEach(b => { if(b) b.classList.remove("active"); });
+    const b = document.getElementById(btnId);
+    if(b) b.classList.add("active");
+}
+
+if(mBtnOffice) mBtnOffice.onclick = () => { closeMobilePanel(); activateMNav('m-btn-office'); };
+if(mBtnRank) mBtnRank.onclick = () => { 
+    if(!rightPanel.classList.contains("open")) panelToggle.onclick(); 
+    document.querySelector('.panel-tab-btn[data-ptab="ranking"]').click();
+    activateMNav('m-btn-rank');
+};
+if(mBtnFeed) mBtnFeed.onclick = () => { 
+    if(!rightPanel.classList.contains("open")) panelToggle.onclick(); 
+    document.querySelector('.panel-tab-btn[data-ptab="activity"]').click();
+    activateMNav('m-btn-feed');
+};
