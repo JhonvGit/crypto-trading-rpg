@@ -10,10 +10,20 @@ const miniCtx    = miniCanvas.getContext("2d");
 miniCanvas.width  = 300;
 miniCanvas.height = 100;
 
+function canvasWidth() { return canvas._cssWidth || canvas.clientWidth || canvas.width; }
+function canvasHeight() { return canvas._cssHeight || canvas.clientHeight || canvas.height; }
+
 function resizeCanvas() {
-  canvas.width  = wrap.clientWidth;
-  canvas.height = wrap.clientHeight;
-  ctx.imageSmoothingEnabled = false;
+  const rect = wrap.getBoundingClientRect();
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+  canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+  canvas.style.width = `${rect.width}px`;
+  canvas.style.height = `${rect.height}px`;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  canvas._cssWidth = rect.width;
+  canvas._cssHeight = rect.height;
+  ctx.imageSmoothingEnabled = true;
 }
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
@@ -65,14 +75,15 @@ document.getElementById("btn-zr").onclick = () => { cam.x=CAM_HOME.x; cam.y=CAM_
 
 // ── ISOMETRIC & 3D ENGINE ────────
 const TILE_W = 60, TILE_H = 30;
+const WORLD_SCALE = 1.18;
 
 function iso(gx, gy) {
-  return { x: (gx - gy) * (TILE_W / 2), y: (gx + gy) * (TILE_H / 2) };
+  return { x: (gx - gy) * (TILE_W / 2) * WORLD_SCALE, y: (gx + gy) * (TILE_H / 2) * WORLD_SCALE };
 }
 function world2screen(wx, wy) {
   return {
-    x: Math.round(canvas.width / 2 + cam.x + wx * cam.zoom),
-    y: Math.round(canvas.height / 2 + cam.y + wy * cam.zoom)
+    x: Math.round(canvasWidth() / 2 + cam.x + wx * cam.zoom),
+    y: Math.round(canvasHeight() / 2 + cam.y + wy * cam.zoom)
   };
 }
 function shadeColor(hex, p) {
@@ -86,10 +97,12 @@ function shadeColor(hex, p) {
 }
 
 const C = {
-  floorLight: "#ecf0f1", floorDark: "#e1e6e8", floorThick: "#bdc3c7",
-  wood1: "#8e5a3e", wood2: "#7a4c33", woodThick: "#4d2e1c",
-  wallBack: "#d5dbdb", wallLeft: "#c2cacb", // Solid fancy walls
-  deskTop: "#ffffff", deskLegs: "#95a5a6", deskEdge: "#ecf0f1",
+  floorLight: "#cbd2dc", floorDark: "#aeb8c6", floorThick: "#697586",
+  wood1: "#8d6b4d", wood2: "#604735", woodThick: "#2b211b",
+  wallBack: "#273142", wallLeft: "#1c2636", // architectural graphite
+  wallBrick: ["#303b4e", "#35445a", "#263244"], wallMortar: "#182231",
+  deskTop: "#f1f5f9", deskLegs: "#596579", deskEdge: "#cbd5e1",
+  marble: "#eef2f7", brass: "#b9985a", glass: "#8ed8e8",
   skin: ["#ffce9e", "#e6b07e", "#996b42", "#664021", "#4a2c13"],
   clothes: ["#3498db", "#e74c3c", "#f39c12", "#2ecc71", "#9b59b6", "#1abc9c", "#34495e"],
   hair: ["#2c3e50", "#3e2723", "#f1c40f", "#d35400"]
@@ -209,20 +222,30 @@ function drawFloorBlock(gx, gy, isLounge) {
 function drawSolidWall(gx, gy, dir) {
     const {x,y} = iso(gx, gy), s = world2screen(x,y);
     const z = cam.zoom, w = TILE_W/2 * z, h = TILE_H/2 * z, wh = 120 * z;
-    ctx.lineWidth = 1.5; ctx.strokeStyle = "#999";
+    const brick = C.wallBrick[(gx + gy + (dir === 'left' ? 1 : 0)) % C.wallBrick.length];
+    ctx.lineWidth = 1.5; ctx.strokeStyle = C.wallMortar;
     ctx.beginPath();
     if (dir === 'left') {
-        ctx.fillStyle = C.wallLeft;
+        ctx.fillStyle = brick;
         ctx.moveTo(s.x, s.y); ctx.lineTo(s.x-w, s.y-h);
         ctx.lineTo(s.x-w, s.y-h-wh); ctx.lineTo(s.x, s.y-wh);
     } else {
-        ctx.fillStyle = C.wallBack;
+        ctx.fillStyle = brick;
         ctx.moveTo(s.x, s.y); ctx.lineTo(s.x+w, s.y-h);
         ctx.lineTo(s.x+w, s.y-h-wh); ctx.lineTo(s.x, s.y-wh);
     }
     ctx.closePath(); ctx.fill(); ctx.stroke();
-    
-    // Baseboard da parede
+
+    // fiadas de tijolos estilizadas
+    ctx.save(); ctx.globalAlpha = 0.38; ctx.strokeStyle = C.wallMortar; ctx.lineWidth = Math.max(1, z);
+    for (let row = 1; row < 6; row++) {
+      const yy = s.y - row * (wh / 6);
+      ctx.beginPath();
+      if (dir === 'left') { ctx.moveTo(s.x, yy); ctx.lineTo(s.x-w, yy-h); }
+      else { ctx.moveTo(s.x, yy); ctx.lineTo(s.x+w, yy-h); }
+      ctx.stroke();
+    }
+    ctx.restore();
     ctx.fillStyle = shadeColor(dir==='left'?C.wallLeft:C.wallBack, -20);
     ctx.beginPath();
     if(dir==='left') { ctx.moveTo(s.x, s.y); ctx.lineTo(s.x-w, s.y-h); ctx.lineTo(s.x-w, s.y-h-12*z); ctx.lineTo(s.x, s.y-12*z); }
@@ -241,15 +264,19 @@ function drawSolidWall(gx, gy, dir) {
 
 function drawFancyDesk(gx, gy) {
     const {x,y} = iso(gx, gy), s = world2screen(x,y);
-    // Mesa premium preta e branca
-    drawCuboid(s, -12, -4, 0.15, 0.15, 18, C.deskLegs, "#7f8c8d", "#bdc3c7", 1);
-    drawCuboid(s, 12, -4, 0.15, 0.15, 18, C.deskLegs, "#7f8c8d", "#bdc3c7", 1);
-    drawCuboid(s, 0, -6, 0.9, 0.6, 2, C.deskTop, C.deskEdge, "#bdc3c7", 1.5, "#95a5a6");
-    // Computador moderno
-    drawCuboid(s, -3, -8, 0.2, 0.2, 2, "#444", "#333", "#222", 1);
-    drawCuboid(s, -3, -10, 0.45, 0.1, 14, "#111", "#050505", shadeColor("#111", -20), 1, "#444");
-    // Teclado rgb
-    drawCuboid(s, 10, -6, 0.35, 0.15, 1, "#rrr", "#bbb", "#aaa", 0);
+    const z = cam.zoom;
+    // estação premium: madeira, alumínio escovado e vidro
+    drawCuboid(s, -12, -4, 0.15, 0.15, 18, C.deskLegs, "#46556b", "#344155", 1);
+    drawCuboid(s, 12, -4, 0.15, 0.15, 18, C.deskLegs, "#46556b", "#344155", 1);
+    drawCuboid(s, 0, -6, 1.05, 0.68, 2.3, C.deskTop, "#aab6c6", "#8794a6", 1.5, "rgba(15,23,42,.75)");
+    drawCuboid(s, -3, -9, 0.42, 0.12, 12, "#1c2636", "#101925", "#0a111c", 1, "#64748b");
+    ctx.save(); ctx.shadowColor = "#60a5fa"; ctx.shadowBlur = 7*z; ctx.fillStyle = "#60a5fa";
+    ctx.beginPath(); ctx.arc(s.x-3*z, s.y-22*z, 1.6*z, 0, Math.PI*2); ctx.fill(); ctx.restore();
+}
+
+function drawFeatureColumn(gx, gy) {
+    const {x,y} = iso(gx, gy), s = world2screen(x,y);
+    drawCuboid(s, 0, 0, 0.28, 0.28, 88, "#d6b878", "#9b7b45", "#71572f", 1, "#241d14");
 }
 
 function drawSmartAvatar(ava) {
@@ -316,6 +343,23 @@ function drawDecisionBubble(s, z, ava) {
     ctx.textAlign = "center"; ctx.fillText(txt, s.x, by + 8.5*z); ctx.textAlign = "left";
 }
 
+function drawLuxuryWindow(gx, gy, dir) {
+  const {x,y} = iso(gx, gy), s = world2screen(x,y), z = cam.zoom;
+  const w = 18*z, h = 34*z, ox = dir === 'left' ? -w*0.55 : w*0.55;
+  ctx.save(); ctx.shadowColor = "#67e8f9"; ctx.shadowBlur = 10*z;
+  ctx.fillStyle = "#102a45"; ctx.strokeStyle = C.brass; ctx.lineWidth = 2*z;
+  ctx.fillRect(s.x+ox-w/2, s.y-82*z, w, h); ctx.strokeRect(s.x+ox-w/2, s.y-82*z, w, h);
+  ctx.strokeStyle = "rgba(103,232,249,.8)"; ctx.lineWidth = 1*z;
+  ctx.beginPath(); ctx.moveTo(s.x+ox, s.y-82*z); ctx.lineTo(s.x+ox, s.y-48*z); ctx.moveTo(s.x+ox-w/2, s.y-65*z); ctx.lineTo(s.x+ox+w/2, s.y-65*z); ctx.stroke();
+  ctx.restore();
+}
+
+function drawPendantLamp(gx, gy) {
+  const {x,y} = iso(gx, gy), s = world2screen(x,y), z = cam.zoom;
+  ctx.save(); ctx.strokeStyle = C.brass; ctx.lineWidth = 1.5*z; ctx.beginPath(); ctx.moveTo(s.x, s.y-110*z); ctx.lineTo(s.x, s.y-82*z); ctx.stroke();
+  ctx.shadowColor = "#fbbf24"; ctx.shadowBlur = 16*z; ctx.fillStyle = "#fff1a8"; ctx.beginPath(); ctx.arc(s.x, s.y-78*z, 5*z, 0, Math.PI*2); ctx.fill(); ctx.restore();
+}
+
 function drawSofa(gx, gy, col) {
     const {x,y} = iso(gx, gy), s = world2screen(x,y);
     drawCuboid(s, 0, 0, 0.8, 1.8, 5, col, shadeColor(col,-15), shadeColor(col,-30), 1.5, "#222");
@@ -334,9 +378,21 @@ function renderOffice() {
     ctx.clearRect(0,0,canvas.width,canvas.height);
     
     // Background Radial Rico
-    const bg = ctx.createRadialGradient(canvas.width/2, canvas.height/3, 0, canvas.width/2, canvas.height/2, canvas.width);
-    bg.addColorStop(0, "#2c3e50"); bg.addColorStop(1, "#0f172a");
-    ctx.fillStyle = bg; ctx.fillRect(0,0,canvas.width, canvas.height);
+    const bg = ctx.createRadialGradient(canvasWidth()/2, canvasHeight()/3, 0, canvasWidth()/2, canvasHeight()/2, canvasWidth());
+    // plano de piso contínuo: visual de maquete premium, sem ruído agressivo
+    const floor = ctx.createLinearGradient(0, 0, canvasWidth(), canvasHeight());
+    floor.addColorStop(0, "#1c2636"); floor.addColorStop(0.48, "#111a29"); floor.addColorStop(1, "#080d16");
+    bg.addColorStop(0, "#34445a"); bg.addColorStop(1, "#080d16");
+    ctx.fillStyle = bg; ctx.fillRect(0,0,canvasWidth(), canvasHeight());
+    // Luxo: halo de iluminação, vitrais e linhas arquitetônicas no piso
+    ctx.save();
+    ctx.globalAlpha = 0.18;
+    const glow = ctx.createRadialGradient(canvasWidth()*0.52, canvasHeight()*0.28, 4, canvasWidth()*0.52, canvasHeight()*0.28, canvasWidth()*0.62);
+    glow.addColorStop(0, "#67e8f9"); glow.addColorStop(0.35, "#6366f1"); glow.addColorStop(1, "transparent");
+    ctx.fillStyle = glow; ctx.fillRect(0, 0, canvasWidth(), canvasHeight());
+    ctx.globalAlpha = 0.12; ctx.strokeStyle = "#d4a84f"; ctx.lineWidth = 1;
+    for (let i = -4; i < 9; i++) { ctx.beginPath(); ctx.moveTo(canvasWidth()*0.5 + i*70, 0); ctx.lineTo(canvasWidth()*0.5 + i*180, canvasHeight()); ctx.stroke(); }
+    ctx.restore();
     
     agentsData.forEach((ag, i) => {
         if (!avatarsMap[ag.id]) avatarsMap[ag.id] = new AgentAvatar(ag, i);
@@ -347,9 +403,13 @@ function renderOffice() {
     
     for (let gx = 0; gx < ROOM_W; gx++) {
         drawQueue.push({ type: 'wallR', gx, gy: 0, z: Math.round((gx)*10) - 50 });
+        if (gx % 4 === 1) drawQueue.push({ type: 'window', gx, gy: 0, dir: 'right', z: Math.round(gx*10) - 45 });
+        if (gx % 5 === 2) drawQueue.push({ type: 'lamp', gx, gy: 1, z: Math.round(gx*10) + 2 });
+        if (gx === 5 || gx === 12) drawQueue.push({ type: 'column', gx, gy: 0, z: Math.round(gx*10) + 4 });
     }
     for (let gy = 0; gy < ROOM_H; gy++) {
         drawQueue.push({ type: 'wallL', gx: 0, gy, z: Math.round((gy)*10) - 50 });
+        if (gy % 4 === 1) drawQueue.push({ type: 'window', gx: 0, gy, dir: 'left', z: Math.round(gy*10) - 45 });
     }
 
     for (let gx = 0; gx < ROOM_W; gx++) {
@@ -382,6 +442,9 @@ function renderOffice() {
         if (item.type === 'tile') drawFloorBlock(item.gx, item.gy, item.isLounge);
         else if (item.type === 'wallR') drawSolidWall(item.gx, item.gy, 'right');
         else if (item.type === 'wallL') drawSolidWall(item.gx, item.gy, 'left');
+        else if (item.type === 'window') drawLuxuryWindow(item.gx, item.gy, item.dir);
+        else if (item.type === 'lamp') drawPendantLamp(item.gx, item.gy);
+        else if (item.type === 'column') drawFeatureColumn(item.gx, item.gy);
         else if (item.type === 'desk') drawFancyDesk(item.gx, item.gy);
         else if (item.type === 'sofa') drawSofa(item.gx, item.gy, item.col);
         else if (item.type === 'plant') drawPlant(item.gx, item.gy);

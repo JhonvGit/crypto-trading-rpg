@@ -7,3 +7,4 @@ __pycache__/
 .env
 nohup.out
 .DS_Store
+node_modules/

@@ -3,19 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>💼 Crypto Trading RPG — Visual Workstation</title>
+<title>Trading RPG — Command Center</title>
+<meta name="theme-color" content="#080C15">
+<meta name="description" content="Painel ao vivo da arena de trading algorítmico.">
+<link rel="icon" type="image/svg+xml" href="/static/brand-mark.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg-deep:      #080C15;
-  --bg-main:      #0C1322;
-  --panel-bg:     rgba(13, 20, 36, 0.92);
-  --panel-card:   rgba(19, 29, 53, 0.72);
-  --panel-card-hover: rgba(26, 40, 72, 0.9);
-  --card-border:  rgba(255, 255, 255, 0.08);
-  --card-border-glow: rgba(99, 102, 241, 0.35);
+  --bg-deep:      #060A12;
+  --bg-main:      #0A1020;
+  --panel-bg:     rgba(12, 19, 34, 0.94);
+  --panel-card:   rgba(18, 29, 52, 0.78);
+  --panel-card-hover: rgba(28, 45, 80, 0.92);
+  --card-border:  rgba(148, 163, 184, 0.14);
+  --card-border-glow: rgba(99, 102, 241, 0.48);
   --text-main:    #F8FAFC;
   --text-sub:     #94A3B8;
   --text-muted:   #64748B;
@@ -43,7 +46,10 @@
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
 body {
-  background: var(--bg-deep);
+  background:
+    radial-gradient(circle at 12% 0%, rgba(99,102,241,.14), transparent 32rem),
+    radial-gradient(circle at 88% 100%, rgba(6,182,212,.08), transparent 28rem),
+    var(--bg-deep);
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   color: var(--text-main);
   overflow: hidden;
@@ -55,8 +61,8 @@ body {
 
 /* ── TOPBAR ── */
 #topbar {
-  background: rgba(10, 15, 29, 0.94);
-  backdrop-filter: blur(16px);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.97), rgba(10, 15, 29, 0.88));
+  backdrop-filter: blur(18px) saturate(140%);
   -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--card-border);
   padding: 0 1.25rem;
@@ -80,7 +86,9 @@ body {
 .brand-icon {
   width: 32px;
   height: 32px;
-  background: linear-gradient(135deg, #6366F1, #38BDF8);
+  background-image: url('/static/brand-mark.svg');
+  background-size: cover;
+  font-size: 0;
   border-radius: 9px;
   display: flex;
   align-items: center;
@@ -916,7 +924,14 @@ body {
   #modal-stats { grid-template-columns: repeat(3, 1fr); }
   #modal-header { padding: 1.1rem; }
   #modal-content { padding: 1rem; }
-  .tab-btn { padding: 10px 14px; }
+  body { height: 100svh; min-height: 100svh; }
+  #main { min-height: 0; }
+  #office-wrap { min-height: 0; }
+  #office-canvas { touch-action: none; -webkit-user-select: none; user-select: none; }
+  #right-panel { padding-bottom: env(safe-area-inset-bottom); }
+  #topbar { padding-top: max(10px, env(safe-area-inset-top)); }
+  .panel-toggle-fab { bottom: max(16px, env(safe-area-inset-bottom)); }
+  #agent-modal { padding-bottom: env(safe-area-inset-bottom); }
 }
 
 @media (min-width: 769px) {

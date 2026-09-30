@@ -370,8 +370,15 @@ footer {
 }
 
 @media (max-width: 768px) {
-  h1 { font-size: 1.5rem; }
-  main { padding: 1rem; gap: 1rem; }
-  .office-room { min-height: 500px; }
-  .panel-section { padding: 0.8rem; }
+  .topbar-ticker { order: 3; flex-basis: 100%; max-width: none; margin: 0; padding-bottom: 8px; }
+  #topbar { height: auto; min-height: 56px; flex-wrap: wrap; padding: 10px 12px 0; gap: 8px; }
+  .topbar-right { margin-left: auto; }
+  .hide-tab { display: none; }
+  .ticker-item { flex: 1; justify-content: center; }
+  #clock { display: none; }
+  .brand-title { font-size: .88rem; }
+  #office-wrap { min-height: 0; }
+  .canvas-watermark { left: 12px; bottom: 12px; }
+  .canvas-hint { font-size: .62rem; }
+  .panel-toggle-fab { bottom: 16px; }
 }

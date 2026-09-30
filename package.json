@@ -1,0 +1,31 @@
+{
+  "name": "trading-rpg",
+  "version": "1.0.0",
+  "description": "![Python 3.14](https://img.shields.io/badge/python-3.14-blue.svg) ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-green.svg) ![License](https://img.shields.io/badge/license-MIT-blue.svg)",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JhonvGit/crypto-trading-rpg.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/JhonvGit/crypto-trading-rpg/issues"
+  },
+  "homepage": "https://github.com/JhonvGit/crypto-trading-rpg#readme",
+  "dependencies": {
+    "pixi.js": "^8.21.0"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}
