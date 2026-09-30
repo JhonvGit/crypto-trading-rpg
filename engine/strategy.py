@@ -369,7 +369,11 @@ def decide_from_klines(
 
     qty_pct = max(0.01, min(float(qty_pct), 1.0))
     if side == "BUY":
-        qty = (balance * qty_pct) / (price * (1 + FEE_TAKER)) if price > 0 else 0.0
+        notional = balance * qty_pct
+        # Garante a compra minima de $5 se o saldo permitir
+        if notional < 5.0 and balance >= 5.0:
+            notional = 5.0
+        qty = notional / (price * (1 + FEE_TAKER)) if price > 0 else 0.0
     else:
         qty = position_qty * qty_pct
 
@@ -424,11 +428,18 @@ async def decide_from_jev(agent_id: str, symbol: str, klines: list[dict], price:
                 res = json.loads(match.group())
                 side = str(res.get("decision", "HOLD")).upper()
                 if side in ["BUY", "SELL"]:
-                    qty_base = pos_qty if side == "SELL" else (balance / price)
-                    qty_pct = float(res.get("qty_pct", 100)) / 100.0
+                    qty_pct = max(0.01, min(float(res.get("qty_pct", 100)) / 100.0, 1.0))
+                    if side == "BUY":
+                        notional = balance * qty_pct
+                        if notional < 5.0 and balance >= 5.0:
+                            notional = 5.0
+                        qty = notional / price
+                    else:
+                        qty = pos_qty * qty_pct
+                        
                     return {
                         "side": side,
-                        "qty": round(qty_base * qty_pct, 6),
+                        "qty": round(qty, 6),
                         "reason": str(res.get("reason", "LLM Strategy decision")),
                         "indicators": {"rsi": rsi_val, "zscore": z_val},
                         "signal_type": "llm",
