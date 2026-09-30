@@ -598,12 +598,21 @@ function updateRanking() {
 // ── GLOBAL STATS ──────────────────────────────────────────
 function updateGlobalStats() {
   const totalTrades = agentsData.reduce((s,a)=>(a.total_trades||0)+s, 0);
-  const totalFees = agentsData.reduce((s,a)=>(a.total_fees||0)+s, 0);
-  const poolSize = agentsData.filter(a=>a.last_decision).length;
+  const totalValue = agentsData.reduce((s,a)=>(a.value||0)+s, 0);
+  const initialValue = agentsData.reduce((s,a)=>(a.initial_balance||50)+s, 0);
+  const totalPnl = totalValue - initialValue;
   
-  document.getElementById("gs-trades").textContent = totalTrades;
-  document.getElementById("gs-fees").textContent = "$"+totalFees.toFixed(2);
-  document.getElementById("gs-pool").textContent = poolSize;
+  const valEl = document.getElementById("gs-value");
+  if (valEl) valEl.textContent = "$"+totalValue.toFixed(2);
+  
+  const pnlEl = document.getElementById("gs-pnl");
+  if (pnlEl) {
+      pnlEl.textContent = `${totalPnl>=0?"+":""}$${totalPnl.toFixed(2)}`;
+      pnlEl.style.color = totalPnl >= 0 ? "#10b981" : "#f43f5e";
+  }
+  
+  const tradesEl = document.getElementById("gs-trades");
+  if (tradesEl) tradesEl.textContent = totalTrades;
 }
 
 // ── FEED DE ATIVIDADE ─────────────────────────────────────

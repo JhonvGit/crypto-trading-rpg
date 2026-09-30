@@ -406,10 +406,11 @@ body {
 #ranking-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  max-height: 290px;
+  gap: 12px;
+  max-height: 380px;
   overflow-y: auto;
-  padding-right: 2px;
+  padding-right: 4px;
+  padding-bottom: 12px;
 }
 #ranking-list::-webkit-scrollbar { width: 4px; }
 #ranking-list::-webkit-scrollbar-thumb { background: var(--card-border); border-radius: 2px; }
@@ -417,8 +418,8 @@ body {
 .rank-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 9px 12px;
+  gap: 12px;
+  padding: 12px 14px;
   border-radius: var(--radius-md);
   background: var(--panel-card);
   border: 1px solid var(--card-border);
@@ -1007,16 +1008,16 @@ body {
         </div>
         <div id="global-stats">
           <div class="gs-card">
-            <div class="gs-v" id="gs-trades">—</div>
+            <div class="gs-v" id="gs-value" style="color:var(--g-blue);">—</div>
+            <div class="gs-l">Patrimônio</div>
+          </div>
+          <div class="gs-card">
+            <div class="gs-v" id="gs-pnl">—</div>
+            <div class="gs-l">P&L Global</div>
+          </div>
+          <div class="gs-card">
+            <div class="gs-v" id="gs-trades" style="color:var(--text-main);">—</div>
             <div class="gs-l">Trades</div>
-          </div>
-          <div class="gs-card">
-            <div class="gs-v" id="gs-fees" style="color:var(--g-amber);">—</div>
-            <div class="gs-l">Fees USD</div>
-          </div>
-          <div class="gs-card">
-            <div class="gs-v" id="gs-pool" style="color:var(--g-blue);">—</div>
-            <div class="gs-l">Signals KB</div>
           </div>
         </div>
       </section>
